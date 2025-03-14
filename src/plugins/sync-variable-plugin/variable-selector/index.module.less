@@ -1,0 +1,68 @@
+.option-select-item-container {
+  display: flex;
+  align-items: flex-start;
+
+  .icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+    margin-right: 5px;
+  }
+
+  .text {
+    word-break: break-all;
+    white-space: pre-wrap;
+  }
+
+  .error-text {
+    word-break: break-all;
+    color: red;
+    white-space: pre-wrap;
+    margin-top: 2px;
+  }
+}
+
+.prefix-icon {
+  margin-left: 2px;
+  display: inline-block;
+  padding: 0 2px;
+  height: 16px;
+
+  svg {
+    scale: 0.7;
+  }
+}
+
+
+.option-type-icon {
+  height: 14px;
+  margin-right: 6px;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.tree-select {
+  :global {
+    .semi-tree-select-selection {
+      padding-left: 4px;
+    }
+
+    .semi-tree-select-arrow,
+    .semi-tree-select-clearbtn {
+      width: 16px;
+
+      svg {
+        scale: 0.7;
+      }
+    }
+  }
+}
+
+
+.description-icon {
+  margin-left: 3px;
+  scale: 0.8;
+  vertical-align: text-top;
+}
