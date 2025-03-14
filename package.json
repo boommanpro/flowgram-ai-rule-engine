@@ -47,9 +47,9 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "exit 0",
-    "build:fast": "exit 0",
-    "build:watch": "exit 0",
+    "build": "rspack build --mode production",
+    "build:fast": "rspack build --mode development",
+    "build:watch": "rspack build --mode development --watch",
     "clean": "rimraf dist",
     "dev": "MODE=app NODE_ENV=development rspack serve",
     "lint": "eslint ./src --cache",
