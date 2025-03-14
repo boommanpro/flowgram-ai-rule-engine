@@ -71,15 +71,19 @@ export const NodeList: FC<NodeListProps> = (props) => {
   };
   return (
     <NodesWrap style={{ width: 80 * 2 + 20 }}>
-      {nodeRegistries.map((registry) => (
-        <Node
-          key={registry.type}
-          disabled={!(registry.canAdd?.(context) ?? true)}
-          icon={<img style={{ width: 10, height: 10, borderRadius: 4 }} src={registry.info.icon} />}
-          label={registry.type as string}
-          onClick={(e) => handleClick(e, registry)}
-        />
-      ))}
+      {nodeRegistries
+        .filter((registry) => registry.canAdd?.(context) ?? true)
+        .map((registry) => (
+          <Node
+            key={registry.type}
+            disabled={false} // 由于已经过滤，这里可以设置为 false
+            icon={
+              <img style={{ width: 10, height: 10, borderRadius: 4 }} src={registry.info.icon} />
+            }
+            label={registry.type as string}
+            onClick={(e) => handleClick(e, registry)}
+          />
+        ))}
     </NodesWrap>
   );
 };

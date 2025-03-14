@@ -15,7 +15,9 @@ import { MinimapSwitch } from './minimap-switch';
 import { Minimap } from './minimap';
 import { Interactive } from './interactive';
 import { FitView } from './fit-view';
+import { Console } from './console';
 import { AutoLayout } from './auto-layout';
+import { AddNote } from './add-note';
 
 export const DemoTools = () => {
   const { history, playground } = useClientContext();
@@ -67,8 +69,10 @@ export const DemoTools = () => {
         </Tooltip>
         <Divider layout="vertical" style={{ height: '16px' }} margin={3} />
         <AddNode disabled={playground.config.readonly} />
+        <AddNote />
         <Divider layout="vertical" style={{ height: '16px' }} margin={3} />
         <Save disabled={playground.config.readonly} />
+        <Console />
       </ToolSection>
     </ToolContainer>
   );

@@ -13,6 +13,7 @@ export const initialData: FlowDocumentJSON = {
       },
       data: {
         title: 'Start',
+        description: 'Start node',
         outputs: {
           type: 'object',
           properties: {
@@ -35,6 +36,7 @@ export const initialData: FlowDocumentJSON = {
       },
       data: {
         title: 'Condition',
+        description: 'condition',
         inputsValues: {
           conditions: [
             {
@@ -73,6 +75,7 @@ export const initialData: FlowDocumentJSON = {
       type: 'llm',
       blocks: [],
       meta: {
+        description: 'llm',
         position: {
           x: 1105,
           y: 0,
@@ -80,6 +83,7 @@ export const initialData: FlowDocumentJSON = {
       },
       data: {
         title: 'LLM_0',
+        description: 'condition',
         inputsValues: {
           modelType: 'gpt-3.5-turbo',
           temperature: 0.5,
@@ -117,6 +121,7 @@ export const initialData: FlowDocumentJSON = {
       type: 'llm',
       blocks: [],
       meta: {
+        description: 'llm',
         position: {
           x: 1105,
           y: 405,
@@ -124,6 +129,7 @@ export const initialData: FlowDocumentJSON = {
       },
       data: {
         title: 'LLM_1',
+        description: 'condition',
         inputsValues: {
           modelType: 'gpt-3.5-turbo',
           temperature: 0.5,
@@ -167,6 +173,37 @@ export const initialData: FlowDocumentJSON = {
       },
       data: {
         title: 'End',
+        description: 'end',
+        outputs: {
+          type: 'object',
+          properties: {
+            result: {
+              type: 'string',
+            },
+          },
+        },
+      },
+    },
+    {
+      id: 'code_mWO_8',
+      type: 'code',
+      meta: {
+        position: {
+          x: 379.6275862068965,
+          y: 177.33620689655174,
+        },
+      },
+      data: {
+        title: 'Code_1',
+        description: '代码组件',
+        inputsValues: {},
+        language: 'java',
+        code: '',
+        inputs: {
+          type: 'object',
+          required: [],
+          properties: {},
+        },
         outputs: {
           type: 'object',
           properties: {

@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useState, useRef } from 'react';
 
 import {
   Command,
@@ -6,7 +6,7 @@ import {
   FieldRenderProps,
   useClientContext,
 } from '@flowgram.ai/free-layout-editor';
-import { IconButton, Dropdown, Typography, Button } from '@douyinfe/semi-ui';
+import { IconButton, Dropdown, Typography, Button, Input } from '@douyinfe/semi-ui';
 import { IconSmallTriangleDown, IconSmallTriangleLeft } from '@douyinfe/semi-icons';
 import { IconMore } from '@douyinfe/semi-icons';
 
@@ -42,20 +42,44 @@ function DropdownContent() {
 
 export function FormHeader() {
   const { node, expanded, toggleExpand, readonly } = useContext(NodeRenderContext);
+  const [isEditing, setIsEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleDoubleClick = () => {
+    if (!readonly) {
+      setIsEditing(true);
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  };
+
+  const handleBlur = (onChange: (value: string) => void, value: string) => {
+    onChange(value);
+    setIsEditing(false);
+  };
 
   return (
     <Header>
       {getIcon(node)}
-      <Title>
+      <Title onDoubleClick={handleDoubleClick}>
         <Field name="title">
           {({ field: { value, onChange }, fieldState }: FieldRenderProps<string>) => (
             <div style={{ height: 24 }}>
-              <Text ellipsis={{ showTooltip: true }}>{value}</Text>
+              {isEditing ? (
+                <Input
+                  ref={inputRef}
+                  defaultValue={value}
+                  onBlur={() => handleBlur(onChange, inputRef.current?.value || '')}
+                  onEnterPress={() => handleBlur(onChange, inputRef.current?.value || '')}
+                />
+              ) : (
+                <Text ellipsis={{ showTooltip: true }}>{value}</Text>
+              )}
               <Feedback errors={fieldState?.errors} />
             </div>
           )}
         </Field>
       </Title>
+      <span>{node.id}</span>
       <Button
         type="primary"
         icon={expanded ? <IconSmallTriangleDown /> : <IconSmallTriangleLeft />}
