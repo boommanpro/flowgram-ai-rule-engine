@@ -54,20 +54,6 @@ export const initialData: FlowDocumentJSON = {
                 content: 'start_0.outputs.mobile',
               },
             },
-            {
-              key: 'if_1',
-              value: {
-                type: 'expression',
-                content: 'start_0.outputs.user',
-              },
-            },
-            {
-              key: 'if_utwn8d',
-              value: {
-                type: 'expression',
-                content: 'start_0.outputs.mis',
-              },
-            },
           ],
         },
         inputs: {
@@ -108,37 +94,7 @@ export const initialData: FlowDocumentJSON = {
           properties: {
             result: {
               type: 'string',
-              default: 'code_DeN-5.outputs.result',
-            },
-          },
-        },
-      },
-    },
-    {
-      id: 'code_mWO_8',
-      type: 'code',
-      meta: {
-        position: {
-          x: 865.3793103448277,
-          y: -230.57068965517237,
-        },
-      },
-      data: {
-        title: 'Code_1',
-        description: '代码组件',
-        inputsValues: {},
-        language: 'java',
-        code: '',
-        inputs: {
-          type: 'object',
-          required: [],
-          properties: {},
-        },
-        outputs: {
-          type: 'object',
-          properties: {
-            result: {
-              type: 'string',
+              default: 'code_r_Wx-.outputs.result',
             },
           },
         },
@@ -157,38 +113,10 @@ export const initialData: FlowDocumentJSON = {
         title: 'Code_1',
         description: '代码组件',
         inputsValues: {},
-        language: 'java',
-        code: '',
-        inputs: {
-          type: 'object',
-          required: [],
-          properties: {},
+        config: {
+          language: 'java',
+          code: '',
         },
-        outputs: {
-          type: 'object',
-          properties: {
-            result: {
-              type: 'string',
-            },
-          },
-        },
-      },
-    },
-    {
-      id: 'code_DeN-5',
-      type: 'code',
-      meta: {
-        position: {
-          x: 1086.6948275862069,
-          y: 752.906896551724,
-        },
-      },
-      data: {
-        title: 'Code_2',
-        description: '代码组件',
-        inputsValues: {},
-        language: 'java',
-        code: '',
         inputs: {
           type: 'object',
           required: [],
@@ -211,29 +139,12 @@ export const initialData: FlowDocumentJSON = {
       targetNodeID: 'condition_0',
     },
     {
-      sourceNodeID: 'start_0',
-      targetNodeID: 'code_mWO_8',
-    },
-    {
       sourceNodeID: 'condition_0',
       targetNodeID: 'code_r_Wx-',
       sourcePortID: 'if_0',
     },
     {
-      sourceNodeID: 'condition_0',
-      targetNodeID: 'code_DeN-5',
-      sourcePortID: 'if_1',
-    },
-    {
-      sourceNodeID: 'code_mWO_8',
-      targetNodeID: 'end_0',
-    },
-    {
       sourceNodeID: 'code_r_Wx-',
-      targetNodeID: 'end_0',
-    },
-    {
-      sourceNodeID: 'code_DeN-5',
       targetNodeID: 'end_0',
     },
   ],

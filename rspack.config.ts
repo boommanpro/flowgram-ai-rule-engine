@@ -37,6 +37,7 @@ export default defineConfig({
       },
       {
         test: /\.(jsx?|tsx?)$/,
+        exclude: /node_modules\/monaco-editor/, // 排除 monaco-editor
         use: [
           {
             loader: 'builtin:swc-loader',
@@ -65,7 +66,7 @@ export default defineConfig({
     new rspack.HtmlRspackPlugin({
       template: './index.html',
     }),
-    isDev ? new RefreshPlugin() : null,
+    isDev ? new RefreshPlugin() : null, // 仅在开发环境中启用
   ].filter(Boolean),
   optimization: {
     minimizer: [

@@ -1,32 +1,34 @@
-import React, { useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 
+import * as monaco from 'monaco-editor';
 import Label from '@douyinfe/semi-ui/lib/es/form/label';
-import { Button, Modal, TextArea } from '@douyinfe/semi-ui';
+import { Button, Modal } from '@douyinfe/semi-ui';
 import { IconCode } from '@douyinfe/semi-icons';
+
+import { MonacoEditor } from '../monaco-editor';
 
 export const CodeEditorField = ({
   value,
   onChange,
+  language,
 }: {
   value: string;
   onChange: (value: string) => void;
+  language: string;
 }) => {
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const [visible, setVisible] = useState(false);
-  const [tempValue, setTempValue] = useState(value);
 
-  const showDialog = () => {
-    setTempValue(value); // 初始化 tempValue 为当前的 value
-    setVisible(true);
-  };
+  const showDialog = useCallback(() => setVisible(true), []);
+  const handleCancel = useCallback(() => setVisible(false), []);
 
-  const handleOk = () => {
-    onChange(tempValue); // 更新 value
+  const handleOk = useCallback(() => {
+    const editorValue = editorRef.current?.getValue();
+    if (editorValue) {
+      onChange(editorValue);
+    }
     setVisible(false);
-  };
-
-  const handleCancel = () => {
-    setVisible(false);
-  };
+  }, [onChange]);
 
   return (
     <>
@@ -41,16 +43,22 @@ export const CodeEditorField = ({
         visible={visible}
         onOk={handleOk}
         onCancel={handleCancel}
-        closeOnEsc={true}
+        closeOnEsc
         fullScreen
-        style={{ zIndex: 1000 }} // 确保 Modal 在最外层
-        getPopupContainer={() => document.body} // 显式指定渲染到 body
+        style={{ zIndex: 1000 }}
+        getPopupContainer={() => document.body}
       >
-        <TextArea
-          value={tempValue}
-          onChange={(v) => setTempValue(v)}
-          rows={10}
-          style={{ width: '100%' }}
+        <MonacoEditor
+          value={value}
+          style={{ width: '100%', height: '500px' }}
+          language={language}
+          theme="vs-dark"
+          options={{
+            fontSize: 14,
+            lineNumbers: 'on',
+            minimap: { enabled: false },
+          }}
+          editorRef={editorRef}
         />
       </Modal>
     </>

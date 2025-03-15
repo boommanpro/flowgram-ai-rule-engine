@@ -21,6 +21,7 @@
     "nanoid": "^4.0.2",
     "react": "^18",
     "react-dom": "^18",
+    "monaco-editor": "^0.52.2",
     "styled-components": "^5",
     "@flowgram.ai/free-layout-editor": "0.1.13",
     "@flowgram.ai/free-lines-plugin": "0.1.13",

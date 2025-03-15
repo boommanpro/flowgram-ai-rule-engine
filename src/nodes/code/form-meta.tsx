@@ -1,3 +1,5 @@
+import React, { useCallback } from 'react';
+
 import {
   Field,
   FieldRenderProps,
@@ -6,8 +8,7 @@ import {
   ValidateTrigger,
 } from '@flowgram.ai/free-layout-editor';
 import Label from '@douyinfe/semi-ui/lib/es/form/label';
-import { Button, Divider, Select } from '@douyinfe/semi-ui';
-import { IconCode } from '@douyinfe/semi-icons';
+import { Divider, Select } from '@douyinfe/semi-ui';
 
 import { FlowNodeJSON, JsonSchema } from '../../typings';
 import { FormContent, FormHeader, FormOutputs, PropertiesEdit } from '../../form-components';
@@ -32,31 +33,49 @@ export const renderForm = ({ form }: FormRenderProps<FlowNodeJSON>) => (
       <Divider margin="12px" />
       <span>代码配置</span>
       <Field
-        name="language"
+        name="config"
         render={({
           field: { value, onChange },
           fieldState,
-        }: FieldRenderProps<Record<string, JsonSchema>>) => (
-          <>
-            <Label>
-              language:
-              <Select defaultValue={value} style={{ width: 200, marginLeft: '8px' }} />
-            </Label>
-          </>
-        )}
-      />
-      <Field
-        name="code"
-        render={({
-          field: { value, onChange },
-          fieldState,
-        }: FieldRenderProps<Record<string, JsonSchema>>) => (
-          <>
-            <CodeEditorField value={value} onChange={onChange} />
-          </>
-        )}
-      />
+        }: FieldRenderProps<Record<string, JsonSchema>>) => {
+          const handleLanguageChange = useCallback(
+            (selectedValue: string) => {
+              onChange({ ...value, language: selectedValue });
+            },
+            [value, onChange]
+          );
 
+          const handleCodeChange = useCallback(
+            (newCode: string) => {
+              onChange({ ...value, code: newCode });
+            },
+            [value, onChange]
+          );
+
+          return (
+            <>
+              <Label>
+                language:
+                <Select
+                  defaultValue={value.language}
+                  style={{ width: 200, marginLeft: '8px' }}
+                  onChange={handleLanguageChange}
+                >
+                  <Select.Option value="python">python</Select.Option>
+                  <Select.Option value="javascript">javascript</Select.Option>
+                  <Select.Option value="typescript">typescript</Select.Option>
+                  <Select.Option value="java">java</Select.Option>
+                </Select>
+              </Label>
+              <CodeEditorField
+                value={value.code}
+                onChange={handleCodeChange}
+                language={value.language}
+              />
+            </>
+          );
+        }}
+      />
       <Divider margin="12px" />
       <span>输出配置</span>
       <Field
