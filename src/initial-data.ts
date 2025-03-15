@@ -17,9 +17,17 @@ export const initialData: FlowDocumentJSON = {
         outputs: {
           type: 'object',
           properties: {
-            query: {
+            user: {
               type: 'string',
               default: 'Hello Flow.',
+            },
+            mobile: {
+              type: 'string',
+              default: '123',
+            },
+            mis: {
+              type: 'string',
+              default: '123',
             },
           },
         },
@@ -30,8 +38,8 @@ export const initialData: FlowDocumentJSON = {
       type: 'condition',
       meta: {
         position: {
-          x: 643,
-          y: 213,
+          x: 594.7362068965517,
+          y: 586.6551724137931,
         },
       },
       data: {
@@ -41,11 +49,24 @@ export const initialData: FlowDocumentJSON = {
           conditions: [
             {
               key: 'if_0',
-              value: { type: 'expression', content: '' },
+              value: {
+                type: 'expression',
+                content: 'start_0.outputs.mobile',
+              },
             },
             {
               key: 'if_1',
-              value: { type: 'expression', content: '' },
+              value: {
+                type: 'expression',
+                content: 'start_0.outputs.user',
+              },
+            },
+            {
+              key: 'if_utwn8d',
+              value: {
+                type: 'expression',
+                content: 'start_0.outputs.mis',
+              },
             },
           ],
         },
@@ -71,104 +92,12 @@ export const initialData: FlowDocumentJSON = {
       },
     },
     {
-      id: 'llm_0',
-      type: 'llm',
-      blocks: [],
-      meta: {
-        description: 'llm',
-        position: {
-          x: 1105,
-          y: 0,
-        },
-      },
-      data: {
-        title: 'LLM_0',
-        description: 'condition',
-        inputsValues: {
-          modelType: 'gpt-3.5-turbo',
-          temperature: 0.5,
-          systemPrompt: 'You are an AI assistant.',
-          prompt: '',
-        },
-        inputs: {
-          type: 'object',
-          required: ['modelType', 'temperature', 'prompt'],
-          properties: {
-            modelType: {
-              type: 'string',
-            },
-            temperature: {
-              type: 'number',
-            },
-            systemPrompt: {
-              type: 'string',
-            },
-            prompt: {
-              type: 'string',
-            },
-          },
-        },
-        outputs: {
-          type: 'object',
-          properties: {
-            result: { type: 'string' },
-          },
-        },
-      },
-    },
-    {
-      id: 'llm_1',
-      type: 'llm',
-      blocks: [],
-      meta: {
-        description: 'llm',
-        position: {
-          x: 1105,
-          y: 405,
-        },
-      },
-      data: {
-        title: 'LLM_1',
-        description: 'condition',
-        inputsValues: {
-          modelType: 'gpt-3.5-turbo',
-          temperature: 0.5,
-          systemPrompt: 'You are an AI assistant.',
-          prompt: 'Hello.',
-        },
-        inputs: {
-          type: 'object',
-          required: ['modelType', 'temperature', 'prompt'],
-          properties: {
-            modelType: {
-              type: 'string',
-            },
-            temperature: {
-              type: 'number',
-            },
-            systemPrompt: {
-              type: 'string',
-            },
-            prompt: {
-              type: 'string',
-            },
-          },
-        },
-        outputs: {
-          type: 'object',
-          properties: {
-            result: { type: 'string' },
-          },
-        },
-      },
-    },
-    {
       id: 'end_0',
       type: 'end',
       meta: {
         position: {
           x: 1567,
-          y: 249.5,
+          y: 335.12931034482756,
         },
       },
       data: {
@@ -179,6 +108,7 @@ export const initialData: FlowDocumentJSON = {
           properties: {
             result: {
               type: 'string',
+              default: 'code_DeN-5.outputs.result',
             },
           },
         },
@@ -189,8 +119,8 @@ export const initialData: FlowDocumentJSON = {
       type: 'code',
       meta: {
         position: {
-          x: 379.6275862068965,
-          y: 177.33620689655174,
+          x: 865.3793103448277,
+          y: -230.57068965517237,
         },
       },
       data: {
@@ -214,12 +144,97 @@ export const initialData: FlowDocumentJSON = {
         },
       },
     },
+    {
+      id: 'code_r_Wx-',
+      type: 'code',
+      meta: {
+        position: {
+          x: 1018.1913793103448,
+          y: 249.5,
+        },
+      },
+      data: {
+        title: 'Code_1',
+        description: '代码组件',
+        inputsValues: {},
+        language: 'java',
+        code: '',
+        inputs: {
+          type: 'object',
+          required: [],
+          properties: {},
+        },
+        outputs: {
+          type: 'object',
+          properties: {
+            result: {
+              type: 'string',
+            },
+          },
+        },
+      },
+    },
+    {
+      id: 'code_DeN-5',
+      type: 'code',
+      meta: {
+        position: {
+          x: 1086.6948275862069,
+          y: 752.906896551724,
+        },
+      },
+      data: {
+        title: 'Code_2',
+        description: '代码组件',
+        inputsValues: {},
+        language: 'java',
+        code: '',
+        inputs: {
+          type: 'object',
+          required: [],
+          properties: {},
+        },
+        outputs: {
+          type: 'object',
+          properties: {
+            result: {
+              type: 'string',
+            },
+          },
+        },
+      },
+    },
   ],
   edges: [
-    { sourceNodeID: 'start_0', targetNodeID: 'condition_0' },
-    { sourceNodeID: 'condition_0', sourcePortID: 'if_0', targetNodeID: 'llm_0' },
-    { sourceNodeID: 'condition_0', sourcePortID: 'if_1', targetNodeID: 'llm_1' },
-    { sourceNodeID: 'llm_0', targetNodeID: 'end_0' },
-    { sourceNodeID: 'llm_1', targetNodeID: 'end_0' },
+    {
+      sourceNodeID: 'start_0',
+      targetNodeID: 'condition_0',
+    },
+    {
+      sourceNodeID: 'start_0',
+      targetNodeID: 'code_mWO_8',
+    },
+    {
+      sourceNodeID: 'condition_0',
+      targetNodeID: 'code_r_Wx-',
+      sourcePortID: 'if_0',
+    },
+    {
+      sourceNodeID: 'condition_0',
+      targetNodeID: 'code_DeN-5',
+      sourcePortID: 'if_1',
+    },
+    {
+      sourceNodeID: 'code_mWO_8',
+      targetNodeID: 'end_0',
+    },
+    {
+      sourceNodeID: 'code_r_Wx-',
+      targetNodeID: 'end_0',
+    },
+    {
+      sourceNodeID: 'code_DeN-5',
+      targetNodeID: 'end_0',
+    },
   ],
 };
