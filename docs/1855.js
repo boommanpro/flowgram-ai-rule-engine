@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunk_flowgram_ai_demo_free_layout=self.webpackChunk_flowgram_ai_demo_free_layout||[]).push([["1855"],{10234:function(e,r,t){t.r(r),t.d(r,{DraggedTreeItemsIdentifier:()=>s,TreeViewsDnDService:()=>a});class a{constructor(){this._dragOperations=new Map}removeDragOperationTransfer(e){if(e&&this._dragOperations.has(e)){let r=this._dragOperations.get(e);return this._dragOperations.delete(e),r}}}class s{constructor(e){this.identifier=e}}}}]);
+//# sourceMappingURL=1855.js.map
