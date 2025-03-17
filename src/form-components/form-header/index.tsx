@@ -1,4 +1,4 @@
-import { useContext, useState, useRef } from 'react';
+import React, { useContext, useRef, useState } from 'react';
 
 import {
   Command,
@@ -6,10 +6,18 @@ import {
   FieldRenderProps,
   useClientContext,
 } from '@flowgram.ai/free-layout-editor';
-import { IconButton, Dropdown, Typography, Button, Input } from '@douyinfe/semi-ui';
-import { IconSmallTriangleDown, IconSmallTriangleLeft } from '@douyinfe/semi-icons';
-import { IconMore } from '@douyinfe/semi-icons';
+import {
+  Button,
+  Divider,
+  Dropdown,
+  IconButton,
+  Input,
+  TextArea,
+  Typography,
+} from '@douyinfe/semi-ui';
+import { IconMore, IconSmallTriangleDown, IconSmallTriangleLeft } from '@douyinfe/semi-icons';
 
+import { FormTitleDescription } from './styles.tsx';
 import { Feedback } from '../feedback';
 import { FlowNodeRegistry } from '../../typings';
 import { NodeRenderContext } from '../../context';
@@ -57,49 +65,96 @@ export function FormHeader() {
     setIsEditing(false);
   };
 
+  const registry = node.getNodeRegistry<FlowNodeRegistry>();
+  const [isDesEditing, setIsDesEditing] = useState(false);
+  const inputDesRef = useRef<HTMLInputElement>(null);
+
+  const handleDesDoubleClick = () => {
+    if (!readonly) {
+      setIsDesEditing(true);
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  };
+
+  const handleDesBlur = (onChange: (value: string) => void, value: string) => {
+    onChange(value);
+    setIsDesEditing(false);
+  };
+
   return (
-    <Header>
-      {getIcon(node)}
-      <Title onDoubleClick={handleDoubleClick}>
-        <Field name="title">
+    <>
+      <Header>
+        {getIcon(node)}
+        <Title onDoubleClick={handleDoubleClick}>
+          <Field name="title">
+            {({ field: { value, onChange }, fieldState }: FieldRenderProps<string>) => (
+              <div style={{ height: 24 }}>
+                {isEditing ? (
+                  <Input
+                    ref={inputRef}
+                    defaultValue={value}
+                    onBlur={() => handleBlur(onChange, inputRef.current?.value || '')}
+                    onEnterPress={() => handleBlur(onChange, inputRef.current?.value || '')}
+                  />
+                ) : (
+                  <Text ellipsis={{ showTooltip: true }}>{value}</Text>
+                )}
+                <Feedback errors={fieldState?.errors} />
+              </div>
+            )}
+          </Field>
+        </Title>
+        <span>{node.id}</span>
+        <Button
+          type="primary"
+          icon={expanded ? <IconSmallTriangleDown /> : <IconSmallTriangleLeft />}
+          size="small"
+          theme="borderless"
+          onClick={toggleExpand}
+        />
+        {readonly ? undefined : (
+          <Operators>
+            <Dropdown trigger="hover" position="bottomRight" render={<DropdownContent />}>
+              <IconButton
+                color="secondary"
+                size="small"
+                theme="borderless"
+                icon={<IconMore />}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </Dropdown>
+          </Operators>
+        )}
+      </Header>
+      <FormTitleDescription onDoubleClick={handleDesDoubleClick}>
+        <Field name="description">
           {({ field: { value, onChange }, fieldState }: FieldRenderProps<string>) => (
-            <div style={{ height: 24 }}>
-              {isEditing ? (
-                <Input
+            <div>
+              {isDesEditing ? (
+                <TextArea
+                  style={{ width: 340 }}
                   ref={inputRef}
                   defaultValue={value}
-                  onBlur={() => handleBlur(onChange, inputRef.current?.value || '')}
-                  onEnterPress={() => handleBlur(onChange, inputRef.current?.value || '')}
+                  onBlur={() => handleDesBlur(onChange, inputRef.current?.value || '')}
+                  onEnterPress={() => handleDesBlur(onChange, inputRef.current?.value || '')}
                 />
               ) : (
-                <Text ellipsis={{ showTooltip: true }}>{value}</Text>
+                <Text
+                  style={{
+                    color: '#888888',
+                    fontSize: '0.875rem',
+                    lineHeight: '1.25rem',
+                  }}
+                  ellipsis={{ showTooltip: true }}
+                >
+                  {value}
+                </Text>
               )}
               <Feedback errors={fieldState?.errors} />
             </div>
           )}
         </Field>
-      </Title>
-      <span>{node.id}</span>
-      <Button
-        type="primary"
-        icon={expanded ? <IconSmallTriangleDown /> : <IconSmallTriangleLeft />}
-        size="small"
-        theme="borderless"
-        onClick={toggleExpand}
-      />
-      {readonly ? undefined : (
-        <Operators>
-          <Dropdown trigger="hover" position="bottomRight" render={<DropdownContent />}>
-            <IconButton
-              color="secondary"
-              size="small"
-              theme="borderless"
-              icon={<IconMore />}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </Dropdown>
-        </Operators>
-      )}
-    </Header>
+      </FormTitleDescription>
+    </>
   );
 }

@@ -5,8 +5,9 @@ export const FormOutputsContainer = styled.div`
   gap: 6px;
   flex-wrap: wrap;
   border-top: 1px solid var(--semi-color-border);
-  padding: 8px 0 0;
   width: 100%;
+  padding: 10px 10px 10px;
+  background: #f4f4ff;
 
   :global(.semi-tag .semi-tag-content) {
     font-size: 10px;

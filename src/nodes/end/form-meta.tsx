@@ -24,8 +24,8 @@ export const renderForm = ({ form }: FormRenderProps<FlowNodeJSON>) => (
           </>
         )}
       />
-      <FormOutputs />
     </FormContent>
+    <FormOutputs />
   </>
 );
 

@@ -33,3 +33,11 @@ export const Operators = styled.div`
   align-items: center;
   column-gap: 4px;
 `;
+export const FormTitleDescription = styled.div`
+  color: var(--semi-color-text-2);
+  font-size: 12px;
+  line-height: 20px;
+  padding: 10px;
+  word-break: break-all;
+  white-space: break-spaces;
+`;
