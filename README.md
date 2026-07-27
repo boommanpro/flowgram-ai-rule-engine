@@ -19,7 +19,7 @@
 
 一个现代化的可视化规则引擎平台，用于编排复杂的 AI 工作流。在无限画布上设计、测试和部署 AI 流程——无需编写代码。结合 [flowgram.ai](https://flowgram.ai) 的能力与 Java 服务端，提供生产级工作流管理。
 
-## ✨ 功能特性
+## 功能特性
 
 - **可视化画布** — 无限缩放画布，支持拖拽节点。通过循环、分支和条件逻辑设计复杂的工作流。
 - **AI 节点类型** — 内置 LLM 调用、代码执行、HTTP 请求、字符串格式化和变量管理节点。
@@ -29,7 +29,7 @@
 - **可扩展插件** — 小地图、自动布局、吸附线、节点面板等。
 - **多条件节点** — 同步官方 flowgram.ai，支持复杂分支逻辑。
 
-## 📸 截图
+## 截图
 
 | 页面 | 预览 |
 |------|------|
@@ -41,7 +41,7 @@
 | **管理后台 · 模板** — 模板管理控制台 | ![管理模板](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/screenshot-admin-templates.png) |
 | **发布日志** — 版本历史时间线 | ![发布日志](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/screenshot-releases.png) |
 
-## 🚀 快速开始
+## 快速开始
 
 ### 环境准备
 
@@ -72,7 +72,7 @@ mvn spring-boot:run
 
 API 服务运行在 48080 端口。
 
-## 🛠 技术栈
+## 技术栈
 
 | 层级     | 技术                                            |
 |----------|-------------------------------------------------|
@@ -81,24 +81,24 @@ API 服务运行在 48080 端口。
 | 数据库   | SQLite                                          |
 | 构建     | rsbuild (前端), Maven (后端)                     |
 
-## 📦 部署方案
+## 部署方案
 
 1. **独立部署** — 前后端分离部署，适用于大型分布式系统。
 2. **一体化部署** — 打包为单一应用，适用于中小型企业。
 3. **GitHub Pages** — 前端部署到 GitHub Pages，后端地址可配置。
 4. **容器化部署** — 提供 Docker 镜像，支持 Kubernetes 部署。
 
-## 📖 文档
+## 文档
 
 完整文档请访问[首页文档部分](https://boommanpro.github.io/gaia-workflow-engine/#docs)。
 
 flowgram.ai 框架文档：<https://flowgram.ai/guide/>
 
-## 🗓 发布日志
+## 发布日志
 
 完整里程碑历史请查看[发布日志页面](https://boommanpro.github.io/gaia-workflow-engine/#/releases)。
 
-## 🤝 贡献
+## 贡献
 
 1. Fork 本项目
 2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
@@ -108,11 +108,11 @@ flowgram.ai 框架文档：<https://flowgram.ai/guide/>
 
 我们遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范。
 
-## 📄 许可证
+## 许可证
 
 本项目采用 MIT 许可证 — 详见 [LICENSE](./LICENSE) 文件。
 
-## ⭐ Star 趋势
+## Star 趋势
 
 [![Star History Chart](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/star-history.svg)](https://www.star-history.com/?repos=boommanpro%2Fgaia-workflow-engine&type=date)
 
@@ -121,7 +121,5 @@ flowgram.ai 框架文档：<https://flowgram.ai/guide/>
 <div align="center">
 
 **[在线演示](https://boommanpro.github.io/gaia-workflow-engine/)** · **[管理后台](https://boommanpro.github.io/gaia-workflow-engine/#/admin/workflows)** · **[发布日志](https://boommanpro.github.io/gaia-workflow-engine/#/releases)** · **[Issues](https://github.com/boommanpro/gaia-workflow-engine/issues)** · **[Discussions](https://github.com/boommanpro/gaia-workflow-engine/discussions)**
-
-<sub>由 ❤️ 和 ☕️ 驱动</sub>
 
 </div>
