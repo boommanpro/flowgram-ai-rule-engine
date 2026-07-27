@@ -19,7 +19,7 @@
 
 A modern visual rule engine platform for orchestrating complex AI workflows. Design, test, and deploy AI pipelines on an infinite canvas — no code required. Combines the power of [flowgram.ai](https://flowgram.ai) with a Java backend for production-ready workflow management.
 
-## ✨ Features
+## Features
 
 - **Visual Canvas** — Infinite, zoomable canvas with drag-and-drop nodes. Supports loops, branches, and conditional logic.
 - **AI Node Types** — Built-in LLM calls, code execution, HTTP requests, string formatting, and variable management.
@@ -29,7 +29,7 @@ A modern visual rule engine platform for orchestrating complex AI workflows. Des
 - **Extensible Plugins** — Minimap, auto-layout, snap lines, node panel, and more.
 - **Multi-condition Node** — Synced from official flowgram.ai for complex branching logic.
 
-## 📸 Screenshots
+## Screenshots
 
 | Page | Preview |
 |------|---------|
@@ -41,7 +41,7 @@ A modern visual rule engine platform for orchestrating complex AI workflows. Des
 | **Admin · Templates** — Template management console | ![Admin Templates](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/screenshot-admin-templates.png) |
 | **Release Log** — Version history timeline | ![Releases](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/screenshot-releases.png) |
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -72,7 +72,7 @@ mvn spring-boot:run
 
 API server runs on port 48080.
 
-## 🛠 Tech Stack
+## Tech Stack
 
 | Layer       | Technology                                      |
 |-------------|-------------------------------------------------|
@@ -81,24 +81,24 @@ API server runs on port 48080.
 | Database    | SQLite                                          |
 | Build       | rsbuild (frontend), Maven (backend)             |
 
-## 📦 Deployment Options
+## Deployment Options
 
 1. **Standalone** — Frontend and backend deployed separately for large distributed systems.
 2. **All-in-One** — Bundled as a single application for small to medium teams.
 3. **GitHub Pages** — Frontend deployed to GitHub Pages with configurable backend address.
 4. **Containerized** — Docker images with Kubernetes support for cloud deployment.
 
-## 📖 Documentation
+## Documentation
 
 Full documentation is available on the [homepage Docs section](https://boommanpro.github.io/gaia-workflow-engine/#docs).
 
 For flowgram.ai framework docs, visit https://flowgram.ai/guide/
 
-## 🗓 Release Log
+## Release Log
 
 See the [Release Log page](https://boommanpro.github.io/gaia-workflow-engine/#/releases) for the full milestone history.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork this project
 2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
@@ -108,11 +108,11 @@ See the [Release Log page](https://boommanpro.github.io/gaia-workflow-engine/#/r
 
 We follow [Conventional Commits](https://www.conventionalcommits.org/).
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License — see the [LICENSE](./LICENSE) file for details.
 
-## ⭐ Star History
+## Star History
 
 [![Star History Chart](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/star-history.svg)](https://www.star-history.com/?repos=boommanpro%2Fgaia-workflow-engine&type=date)
 
@@ -121,7 +121,5 @@ This project is licensed under the MIT License — see the [LICENSE](./LICENSE) 
 <div align="center">
 
 **[Live Demo](https://boommanpro.github.io/gaia-workflow-engine/)** · **[Admin Console](https://boommanpro.github.io/gaia-workflow-engine/#/admin/workflows)** · **[Release Log](https://boommanpro.github.io/gaia-workflow-engine/#/releases)** · **[Issues](https://github.com/boommanpro/gaia-workflow-engine/issues)** · **[Discussions](https://github.com/boommanpro/gaia-workflow-engine/discussions)**
-
-<sub>Built with ❤️ and ☕️</sub>
 
 </div>
