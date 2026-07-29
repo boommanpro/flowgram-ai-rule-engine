@@ -23,3 +23,12 @@ mybatis-plus:
       logic-delete-field: isDeleted
       logic-delete-value: 1
       logic-not-delete-value: 0
+
+agent:
+  llm:
+    api-host: http://localhost:1234/v1
+    api-key: sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    model: qwen/qwen3-4b-2507
+    temperature: 0.5
+  history:
+    max-messages: 20

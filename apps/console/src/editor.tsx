@@ -23,6 +23,7 @@ import { DemoTools } from './components/tools';
 import { workflowApi, GaiaWorkflowVersion, GaiaWorkflowTemplate } from './services/workflow-api';
 import { useLanguage, t } from './i18n';
 import { LanguageToggle } from './components/language-toggle';
+import { EditorCanvasBridge } from './agent';
 
 const ACCENT = '#4d53e8';
 
@@ -148,6 +149,7 @@ export const Editor = () => {
 
   return (
     <FreeLayoutEditorProvider {...editorProps} key={remountKey}>
+      <EditorCanvasBridge />
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
         <EditorHeader
           workflowCode={workflowCode}
@@ -517,6 +519,7 @@ export const TemplateEditor = () => {
 
   return (
     <FreeLayoutEditorProvider {...editorProps}>
+      <EditorCanvasBridge />
       <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
         <TemplateEditorHeader
           templateInfo={templateInfo}
