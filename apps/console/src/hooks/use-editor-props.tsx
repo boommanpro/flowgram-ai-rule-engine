@@ -40,6 +40,7 @@ import { testRunPanelFactory } from '../components/testrun/testrun-panel';
 import { nodeFormPanelFactory } from '../components/sidebar';
 import { SelectorBoxPopover } from '../components/selector-box-popover';
 import { runHistoryPanelFactory } from '../components/run-history';
+import { singleNodeTestPanelFactory } from '../components/run-node-panel';
 import { BaseNode, CommentRender, GroupNodeRender, LineAddButton, NodePanel } from '../components';
 import { getApiBaseUrl } from '../utils/apiConfig';
 import { getCurrentLocale } from '../i18n';
@@ -411,7 +412,12 @@ export function useEditorProps(
         }),
         /** Float layout plugin */
         createPanelManagerPlugin({
-          factories: [nodeFormPanelFactory, testRunPanelFactory, runHistoryPanelFactory],
+          factories: [
+            nodeFormPanelFactory,
+            testRunPanelFactory,
+            runHistoryPanelFactory,
+            singleNodeTestPanelFactory,
+          ],
         }),
       ],
     }),

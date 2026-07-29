@@ -1,10 +1,13 @@
 package cn.boommanpro.gaia.workflow.app.service.impl;
 
 import cn.boommanpro.gaia.workflow.app.executor.AsyncWorkflowExecutor;
+import cn.boommanpro.gaia.workflow.app.executor.SingleNodeExecutor;
+import cn.boommanpro.gaia.workflow.app.domain.testrun.input.SingleNodeRunInput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.input.TaskCancelInput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.input.TaskRunInput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.model.NodeStatus;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.model.TaskInfo;
+import cn.boommanpro.gaia.workflow.app.domain.testrun.output.SingleNodeRunOutput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.output.TaskCancelOutput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.output.TaskReportOutput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.output.TaskResultOutput;
@@ -33,11 +36,14 @@ public class WorkflowTaskServiceImpl implements WorkflowTaskService {
 
     private final TaskRepository taskRepository;
     private final AsyncWorkflowExecutor asyncWorkflowExecutor;
+    private final SingleNodeExecutor singleNodeExecutor;
 
     @Autowired
-    public WorkflowTaskServiceImpl(TaskRepository taskRepository, AsyncWorkflowExecutor asyncWorkflowExecutor) {
+    public WorkflowTaskServiceImpl(TaskRepository taskRepository, AsyncWorkflowExecutor asyncWorkflowExecutor,
+                                   SingleNodeExecutor singleNodeExecutor) {
         this.taskRepository = taskRepository;
         this.asyncWorkflowExecutor = asyncWorkflowExecutor;
+        this.singleNodeExecutor = singleNodeExecutor;
     }
 
     @Override
@@ -165,6 +171,12 @@ public class WorkflowTaskServiceImpl implements WorkflowTaskService {
         }
 
         return new TaskResultOutput(taskInfo.getOutputs());
+    }
+
+    @Override
+    public SingleNodeRunOutput runSingleNode(SingleNodeRunInput input) {
+        logger.info("执行单节点测试: nodeType={}", input.getNode() != null ? "present" : "null");
+        return singleNodeExecutor.execute(input);
     }
 }
 

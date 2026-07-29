@@ -1,7 +1,9 @@
 package cn.boommanpro.gaia.workflow.app.service;
 
+import cn.boommanpro.gaia.workflow.app.domain.testrun.input.SingleNodeRunInput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.input.TaskCancelInput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.input.TaskRunInput;
+import cn.boommanpro.gaia.workflow.app.domain.testrun.output.SingleNodeRunOutput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.output.TaskCancelOutput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.output.TaskReportOutput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.output.TaskResultOutput;
@@ -55,5 +57,13 @@ public interface WorkflowTaskService {
      * @return 任务结果
      */
     TaskResultOutput getTaskResult(String taskId);
+
+    /**
+     * 执行单个节点（用于节点级测试）
+     *
+     * @param input 节点 JSON 与模拟内存上下文
+     * @return 执行结果
+     */
+    SingleNodeRunOutput runSingleNode(SingleNodeRunInput input);
 }
 

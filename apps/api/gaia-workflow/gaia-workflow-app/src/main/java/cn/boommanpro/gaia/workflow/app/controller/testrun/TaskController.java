@@ -1,7 +1,9 @@
 package cn.boommanpro.gaia.workflow.app.controller.testrun;
 
+import cn.boommanpro.gaia.workflow.app.domain.testrun.input.SingleNodeRunInput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.input.TaskCancelInput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.input.TaskRunInput;
+import cn.boommanpro.gaia.workflow.app.domain.testrun.output.SingleNodeRunOutput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.output.TaskCancelOutput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.output.TaskReportOutput;
 import cn.boommanpro.gaia.workflow.app.domain.testrun.output.TaskResultOutput;
@@ -75,5 +77,16 @@ public class TaskController {
     @GetMapping("result")
     public TaskResultOutput result(@RequestParam String taskID) {
         return workflowTaskService.getTaskResult(taskID);
+    }
+
+    /**
+     * 执行单个节点（用于节点级测试）
+     * <p>
+     * 接收节点 JSON 和模拟内存上下文，独立执行该节点并返回结果。
+     * 支持 start, end, code, string-format, variable, http, llm, condition 等节点类型。
+     */
+    @PostMapping("runNode")
+    public SingleNodeRunOutput runNode(@RequestBody SingleNodeRunInput input) {
+        return workflowTaskService.runSingleNode(input);
     }
 }

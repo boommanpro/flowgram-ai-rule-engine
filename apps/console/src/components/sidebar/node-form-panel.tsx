@@ -11,10 +11,13 @@ import {
   useRefresh,
   useClientContext,
 } from '@flowgram.ai/free-layout-editor';
+import { Button } from '@douyinfe/semi-ui';
+import { IconPlay } from '@douyinfe/semi-icons';
 
 import { FlowNodeMeta } from '../../typings';
 import { IsSidebarContext } from '../../context';
 import { SidebarNodeRenderer } from './sidebar-node-renderer';
+import { useLanguage, t } from '../../i18n';
 
 export interface NodeFormPanelProps {
   nodeId: string;
@@ -24,12 +27,19 @@ export const NodeFormPanel: React.FC<NodeFormPanelProps> = ({ nodeId }) => {
   const panelManager = usePanelManager();
   const { selection, playground, document } = useClientContext();
   const refresh = useRefresh();
+  useLanguage();
   const handleClose = useCallback(() => {
     // Sidebar delayed closing
     startTransition(() => {
       panelManager.close(nodeFormPanelFactory.key);
     });
   }, []);
+
+  const handleTestNode = useCallback(() => {
+    panelManager.open('single-node-test-panel', 'right', {
+      props: { nodeId },
+    });
+  }, [panelManager, nodeId]);
   const node = document.getNode(nodeId);
   const sidebarDisabled = node?.getNodeMeta<FlowNodeMeta>()?.sidebarDisabled === true;
   /**
@@ -88,6 +98,18 @@ export const NodeFormPanel: React.FC<NodeFormPanelProps> = ({ nodeId }) => {
     <IsSidebarContext.Provider value={true}>
       <PlaygroundEntityContext.Provider key={node.id} value={node}>
         <SidebarNodeRenderer node={node} />
+        {!playground.config.readonly && (
+          <div style={{ padding: '8px 16px 16px', borderTop: '1px solid rgba(82,100,154,0.08)' }}>
+            <Button
+              block
+              icon={<IconPlay size="small" />}
+              onClick={handleTestNode}
+              style={{ borderRadius: 6 }}
+            >
+              {t('singleNode.testThisNode')}
+            </Button>
+          </div>
+        )}
       </PlaygroundEntityContext.Provider>
     </IsSidebarContext.Provider>
   );

@@ -237,6 +237,25 @@ export const zhCN: I18nLanguage = {
     'runPanel.outputResult': '输出结果',
     'runPanel.requestFailed': '请求失败',
 
+    /* ---------- Single node test ---------- */
+    'singleNode.title': '单节点测试',
+    'singleNode.testThisNode': '测试此节点',
+    'singleNode.runNode': '运行节点',
+    'singleNode.inputFields': '输入参数',
+    'singleNode.memoryContext': '内存上下文（可选）',
+    'singleNode.memoryContextHint': '模拟上游节点输出，用于解析 ref 引用和模板变量',
+    'singleNode.result': '执行结果',
+    'singleNode.outputs': '输出',
+    'singleNode.rawResult': '原始返回值',
+    'singleNode.success': '成功',
+    'singleNode.executionFailed': '执行失败',
+    'singleNode.running': '执行中…',
+    'singleNode.unsupportedType': '该节点类型不支持单独测试',
+    'singleNode.unsupportedHint': '控制流节点（循环、分支等）请通过完整工作流试运行进行测试',
+    'singleNode.requestFailed': '请求失败：',
+    'singleNode.placeholderValue': '请输入值',
+    'singleNode.placeholderJson': '请输入 JSON',
+
     /* ---------- Node panel labels ---------- */
     'node.label.start': '开始',
     'node.label.end': '结束',

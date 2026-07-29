@@ -237,6 +237,25 @@ export const enUS: I18nLanguage = {
     'runPanel.outputResult': 'Output Result',
     'runPanel.requestFailed': 'Request failed',
 
+    /* ---------- Single node test ---------- */
+    'singleNode.title': 'Node Test',
+    'singleNode.testThisNode': 'Test This Node',
+    'singleNode.runNode': 'Run Node',
+    'singleNode.inputFields': 'Input Parameters',
+    'singleNode.memoryContext': 'Memory Context (optional)',
+    'singleNode.memoryContextHint': 'Mock upstream node outputs for ref and template resolution',
+    'singleNode.result': 'Result',
+    'singleNode.outputs': 'Outputs',
+    'singleNode.rawResult': 'Raw Result',
+    'singleNode.success': 'Success',
+    'singleNode.executionFailed': 'Execution Failed',
+    'singleNode.running': 'Running…',
+    'singleNode.unsupportedType': 'This node type does not support single-node testing',
+    'singleNode.unsupportedHint': 'Control flow nodes (loop, branch, etc.) should be tested via full workflow run',
+    'singleNode.requestFailed': 'Request failed: ',
+    'singleNode.placeholderValue': 'Enter value',
+    'singleNode.placeholderJson': 'Enter JSON',
+
     /* ---------- Node panel labels ---------- */
     'node.label.start': 'Start',
     'node.label.end': 'End',
