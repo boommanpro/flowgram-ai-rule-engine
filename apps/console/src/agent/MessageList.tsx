@@ -2,13 +2,57 @@
  * MessageList - 消息流渲染组件
  * 渲染 user / assistant / tool 三类消息，支持流式追加与工具调用卡片
  */
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 
 import { useAgent } from './AgentContext';
 import PlanCard from './PlanCard';
+import Markdown from './Markdown';
 import type { DisplayMessage, ToolCallEvent } from './types';
 
 const ACCENT = '#4d53e8';
+
+/** Markdown 全局样式（仅注入一次） */
+const MarkdownStyle: React.FC = () => (
+  <style>{`
+    .md-body { font-size: 13px; line-height: 1.6; word-break: break-word; }
+    .md-body .md-p { margin: 0 0 6px; }
+    .md-body .md-p:last-child { margin-bottom: 0; }
+    .md-body .md-h { margin: 8px 0 4px; font-weight: 600; line-height: 1.3; }
+    .md-body .md-h1 { font-size: 16px; }
+    .md-body .md-h2 { font-size: 15px; }
+    .md-body .md-h3 { font-size: 14px; }
+    .md-body .md-h4, .md-body .md-h5, .md-body .md-h6 { font-size: 13px; }
+    .md-body .md-ul, .md-body .md-ol { margin: 4px 0; padding-left: 20px; }
+    .md-body .md-ul { list-style: disc; }
+    .md-body .md-ol { list-style: decimal; }
+    .md-body .md-ul li, .md-body .md-ol li { margin: 2px 0; }
+    .md-body .md-inline-code {
+      background: #f0f0f5; padding: 1px 5px; border-radius: 3px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px; color: #c0405a;
+    }
+    .md-body .md-code-block {
+      background: #1e1e2e; color: #e0e0e8; border-radius: 6px;
+      padding: 10px 12px; margin: 6px 0; overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px; line-height: 1.5;
+    }
+    .md-body .md-code-block code { background: transparent; padding: 0; color: inherit; }
+    .md-body .md-quote {
+      border-left: 3px solid #d0d0e0; padding: 2px 10px; margin: 6px 0;
+      color: #666; background: #f7f7fa; border-radius: 0 4px 4px 0;
+    }
+    .md-body .md-hr { border: none; border-top: 1px solid #e8e8ea; margin: 8px 0; }
+    .md-body .md-table { border-collapse: collapse; width: 100%; margin: 6px 0; font-size: 12.5px; }
+    .md-body .md-table th { background: #f0f0f5; font-weight: 600; text-align: left; }
+    .md-body .md-table th, .md-body .md-table td { border: 1px solid #e0e0e8; padding: 4px 8px; }
+    .md-body .md-table tbody tr:nth-child(even) { background: #fafafa; }
+    .md-body .md-link { color: #4d53e8; text-decoration: none; }
+    .md-body .md-link:hover { text-decoration: underline; }
+    .md-body strong { font-weight: 600; }
+    .md-body em { font-style: italic; }
+  `}</style>
+);
 
 /** 工具调用 args 摘要 */
 function summarizeArgs(args: Record<string, any>): string {
@@ -85,38 +129,71 @@ const ToolCallCard: React.FC<{ toolCall: ToolCallEvent }> = ({ toolCall }) => {
   );
 };
 
-/** 工具结果（可折叠） */
+/** 工具结果（可折叠，JSON 美化） */
 const ToolResultCard: React.FC<{ content: string }> = ({ content }) => {
   const [expanded, setExpanded] = useState(false);
   const toggle = useCallback(() => setExpanded((v) => !v), []);
 
-  const preview = content.length > 80 ? content.slice(0, 80) + '…' : content;
+  // 尝试解析 JSON 并美化
+  const prettyContent = useMemo(() => {
+    try {
+      const parsed = JSON.parse(content);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return content;
+    }
+  }, [content]);
+
+  const preview = prettyContent.length > 80 ? prettyContent.slice(0, 80).replace(/\n/g, ' ') + '…' : prettyContent;
 
   return (
     <div
-      onClick={toggle}
       style={{
         background: '#f7f7fa',
         borderRadius: '6px',
         padding: '6px 8px',
         fontSize: '11px',
         color: '#888',
-        cursor: 'pointer',
         maxWidth: '100%',
-        wordBreak: 'break-all',
-        fontFamily:
-          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace",
         border: '1px solid #eee',
       }}
     >
-      <span style={{ color: '#aaa', marginRight: '4px' }}>{expanded ? '▾' : '▸'} 结果</span>
-      {expanded ? content : preview}
+      <div
+        onClick={toggle}
+        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+      >
+        <span style={{ color: '#aaa' }}>{expanded ? '▾' : '▸'} 结果</span>
+        {!expanded && (
+          <span style={{ color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {preview}
+          </span>
+        )}
+      </div>
+      {expanded && (
+        <pre
+          style={{
+            margin: '4px 0 0',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-all',
+            fontFamily:
+              "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace",
+            color: '#555',
+            lineHeight: '1.4',
+          }}
+        >
+          {prettyContent}
+        </pre>
+      )}
     </div>
   );
 };
 
 /** 单条消息 */
-const MessageItem: React.FC<{ message: DisplayMessage }> = ({ message }) => {
+const MessageItem: React.FC<{
+  message: DisplayMessage;
+  streaming: boolean;
+  onOptionClick: (option: string) => void;
+}> = ({ message, streaming, onOptionClick }) => {
   // tool 类型
   if (message.role === 'tool') {
     if (message.toolCall) {
@@ -154,17 +231,24 @@ const MessageItem: React.FC<{ message: DisplayMessage }> = ({ message }) => {
       <div
         style={{
           maxWidth: '85%',
-          padding: '8px 12px',
+          padding: isUser ? '8px 12px' : '8px 12px',
           borderRadius: isUser ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
           background: isUser ? ACCENT : '#f0f0f5',
           color: isUser ? '#fff' : '#1a1a1a',
           fontSize: '13px',
           lineHeight: '1.55',
           wordBreak: 'break-word',
-          whiteSpace: 'pre-wrap',
         }}
       >
-        {message.content || (isUser ? '' : '')}
+        {isUser ? (
+          <span style={{ whiteSpace: 'pre-wrap' }}>{message.content}</span>
+        ) : (
+          <Markdown
+            content={message.content}
+            onOptionClick={onOptionClick}
+            optionsDisabled={streaming}
+          />
+        )}
       </div>
     </div>
   );
@@ -207,9 +291,17 @@ const TypingIndicator: React.FC = () => (
 );
 
 export const MessageList: React.FC = () => {
-  const { messages, streaming } = useAgent();
+  const { messages, streaming, sendMessage } = useAgent();
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // 选项点击 → 直接发送
+  const handleOptionClick = useCallback(
+    (option: string) => {
+      if (!streaming) void sendMessage(option);
+    },
+    [streaming, sendMessage]
+  );
 
   // 自动滚动到底部
   useEffect(() => {
@@ -277,9 +369,14 @@ export const MessageList: React.FC = () => {
         flexDirection: 'column',
       }}
     >
+      <MarkdownStyle />
       {messages.map((m) => (
         <React.Fragment key={m.id}>
-          <MessageItem message={m} />
+          <MessageItem
+            message={m}
+            streaming={streaming}
+            onOptionClick={handleOptionClick}
+          />
           {m.planSteps && m.planSteps.length > 0 && <PlanCard steps={m.planSteps} />}
         </React.Fragment>
       ))}
