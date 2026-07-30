@@ -3,12 +3,17 @@
  * 支持在工作流编辑器中独立测试单个节点的执行效果
  *
  * 核心能力：
- * 1. 自动识别节点 inputsValues 中的 ref 引用字段
+ * 1. 自动识别节点中所有 ref 引用字段（覆盖不同节点类型的存储位置）
  * 2. 为每个 ref 字段提供输入框，让用户输入模拟值（无需手写 JSON）
  * 3. 构建模拟内存上下文，将 ref 引用映射为对应的上游节点输出值
  * 4. 常量字段已在节点配置中设置，无需重复输入
  *
- * 支持的节点类型：start, end, code, string-format, variable, http, llm, condition
+ * ref 字段存储位置（按节点类型）：
+ * - end/code/string-format/llm: data.inputsValues.<paramName>
+ * - http: data.headersValues.<key> / data.paramsValues.<key>
+ * - condition: data.conditions[].value.left / .right
+ * - variable: data.assign[].right
+ *
  * 不支持：loop, block-start, block-end, continue, break, branches, workflow, group, note, comment, assignee
  */
 
@@ -81,26 +86,85 @@ function extractFieldTypeMap(nodeData: any): Record<string, string> {
 }
 
 /**
- * 从 inputsValues 中提取所有 ref 引用字段
+ * 尝试从单个值中提取 ref 引用
  * ref 格式：{ type: 'ref', content: [nodeId, paramName] }
  */
-function extractRefFields(nodeData: any, fieldTypeMap: Record<string, string>): RefField[] {
-  const inputsValues = nodeData?.inputsValues;
-  if (!inputsValues || typeof inputsValues !== 'object') return [];
+function tryExtractRef(val: any, name: string, type: string): RefField | null {
+  if (!val || typeof val !== 'object') return null;
+  if (val.type === 'ref' && Array.isArray(val.content) && val.content.length >= 2) {
+    const [refNodeId, refParamName] = val.content;
+    return {
+      name,
+      refNodeId,
+      refParamName,
+      refNodeTitle: refNodeId,
+      type,
+    };
+  }
+  return null;
+}
 
+/**
+ * 从节点的所有可能位置提取 ref 引用字段
+ * 覆盖不同节点类型的 ref 存储位置：
+ * - inputsValues: end/code/string-format/llm
+ * - headersValues/paramsValues: http
+ * - conditions[].value.left/right: condition
+ * - assign[].right: variable
+ */
+function extractRefFields(nodeData: any, fieldTypeMap: Record<string, string>): RefField[] {
+  if (!nodeData || typeof nodeData !== 'object') return [];
   const refFields: RefField[] = [];
-  for (const [name, val] of Object.entries(inputsValues) as [string, any][]) {
-    if (val?.type === 'ref' && Array.isArray(val.content) && val.content.length >= 2) {
-      const [refNodeId, refParamName] = val.content;
-      refFields.push({
-        name,
-        refNodeId,
-        refParamName,
-        refNodeTitle: refNodeId,
-        type: fieldTypeMap[name] || 'string',
-      });
+
+  const pushRef = (val: any, name: string, type?: string) => {
+    const field = tryExtractRef(val, name, type || fieldTypeMap[name] || 'string');
+    if (field) refFields.push(field);
+  };
+
+  // 1. inputsValues (end/code/string-format/llm)
+  const inputsValues = nodeData.inputsValues;
+  if (inputsValues && typeof inputsValues === 'object') {
+    for (const [name, val] of Object.entries(inputsValues) as [string, any][]) {
+      pushRef(val, name);
     }
   }
+
+  // 2. headersValues / paramsValues (http)
+  const headerValues = nodeData.headersValues;
+  if (headerValues && typeof headerValues === 'object') {
+    for (const [name, val] of Object.entries(headerValues) as [string, any][]) {
+      pushRef(val, `headers.${name}`);
+    }
+  }
+  const paramValues = nodeData.paramsValues;
+  if (paramValues && typeof paramValues === 'object') {
+    for (const [name, val] of Object.entries(paramValues) as [string, any][]) {
+      pushRef(val, `params.${name}`);
+    }
+  }
+
+  // 3. conditions (condition)
+  const conditions = nodeData.conditions;
+  if (Array.isArray(conditions)) {
+    conditions.forEach((cond: any, idx: number) => {
+      const value = cond?.value;
+      if (value) {
+        pushRef(value.left, `condition[${idx}].left`);
+        pushRef(value.right, `condition[${idx}].right`);
+      }
+    });
+  }
+
+  // 4. assign (variable)
+  const assign = nodeData.assign;
+  if (Array.isArray(assign)) {
+    assign.forEach((item: any, idx: number) => {
+      if (item?.right) {
+        pushRef(item.right, `assign[${idx}].right`);
+      }
+    });
+  }
+
   return refFields;
 }
 

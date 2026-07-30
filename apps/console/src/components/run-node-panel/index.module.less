@@ -42,10 +42,11 @@
   .content {
     flex: 1;
     overflow: auto;
-    padding: 12px 16px 72px 16px;
+    padding: 12px 16px;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-height: 0;
   }
 
   .nodeInfo {
@@ -165,10 +166,7 @@
 
   .footer {
     border-top: 1px solid rgba(82, 100, 154, 0.13);
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    flex-shrink: 0;
     height: 56px;
     background: #fbfbff;
     border-radius: 0 0 8px 8px;
