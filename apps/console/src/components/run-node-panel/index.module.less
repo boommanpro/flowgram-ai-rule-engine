@@ -1,0 +1,230 @@
+/**
+ * 单节点测试面板样式
+ * 对齐项目透明白色极简风格
+ */
+
+.container {
+  background: rgb(255, 255, 255);
+  border-radius: 8px;
+  height: 100%;
+  width: 100%;
+  border: 1px solid rgba(82, 100, 154, 0.13);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+
+  .header {
+    background: #fcfcff;
+    border-bottom: 1px solid rgba(82, 100, 154, 0.13);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    display: flex;
+    height: 40px;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+
+    .title {
+      font-size: 15px;
+      font-weight: 500;
+      margin-left: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .closeBtn {
+      margin-right: 8px;
+    }
+  }
+
+  .content {
+    flex: 1;
+    overflow: auto;
+    padding: 12px 16px 72px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .nodeInfo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(82, 100, 154, 0.06);
+
+    .nodeTitle {
+      font-size: 13px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .nodeId {
+      font-size: 11px;
+      color: #999;
+    }
+  }
+
+  .section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sectionTitle {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .fieldRow {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px;
+    border-radius: 6px;
+    background: #fafbff;
+    border: 1px solid rgba(82, 100, 154, 0.08);
+
+    .fieldHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      .fieldLabel {
+        font-size: 12px;
+        font-weight: 500;
+        color: #555;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+
+        .required {
+          color: #f5222d;
+        }
+
+        .fieldType {
+          color: #bbb;
+          font-size: 11px;
+          font-weight: 400;
+        }
+      }
+    }
+
+    .modeSwitch {
+      display: inline-flex;
+      background: #f0f0f0;
+      border-radius: 4px;
+      padding: 1px;
+
+      .modeBtn {
+        border: none;
+        background: transparent;
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 3px;
+        cursor: pointer;
+        color: #999;
+        transition: all 0.2s;
+
+        &.active {
+          background: #fff;
+          color: #333;
+          font-weight: 500;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+        }
+      }
+    }
+  }
+
+  .refHint {
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+  }
+
+  .resultBlock {
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .resultSuccess {
+    background: #f6ffed;
+    border: 1px solid #b7eb8f;
+    padding: 8px 10px;
+  }
+
+  .resultError {
+    background: #fff2f0;
+    border: 1px solid #ffccc7;
+    padding: 8px 10px;
+  }
+
+  .resultPre {
+    background: #f5f7fa;
+    border-radius: 4px;
+    padding: 8px;
+    margin-top: 4px;
+    max-height: 240px;
+    overflow: auto;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.5;
+  }
+
+  .emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    gap: 8px;
+    padding: 40px 20px;
+  }
+
+  .footer {
+    border-top: 1px solid rgba(82, 100, 154, 0.13);
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: #fbfbff;
+    border-radius: 0 0 8px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+  }
+
+  .runButton {
+    background: rgba(0, 178, 60, 1);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    width: 100%;
+    height: 38px;
+    font-weight: 500;
+
+    &:hover {
+      background: rgba(0, 160, 54, 1) !important;
+    }
+  }
+
+  .loadingWrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 24px;
+    color: #666;
+    font-size: 13px;
+  }
+}
