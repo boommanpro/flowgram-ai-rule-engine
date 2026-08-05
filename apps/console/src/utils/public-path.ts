@@ -12,11 +12,20 @@
 const ASSET_PREFIX: string = process.env.ASSET_PREFIX || './';
 
 /**
- * 返回 public 目录下指定资源的完整相对路径
- * @example publicPath('logo.svg') // => '/gaia-workflow-engine/logo.svg' 或 './logo.svg'
+ * 返回 public 目录下指定资源的完整路径
+ * @example publicPath('logo.svg') // => '/gaia-workflow-engine/logo.svg' 或 '/logo.svg'
  */
 export const publicPath = (asset: string): string => {
   const prefix = ASSET_PREFIX.endsWith('/') ? ASSET_PREFIX : `${ASSET_PREFIX}/`;
   const name = asset.startsWith('/') ? asset.slice(1) : asset;
+  // 相对前缀 './' 在非根路由页面（如 /admin/workflows）下会被浏览器错误解析，
+  // 在 http/https 环境下改用根绝对路径 '/' 确保任何路由下都能正确访问。
+  // electron 的 file:// 协议保持相对路径。
+  if (prefix === './') {
+    if (typeof window !== 'undefined' && /^https?:/.test(window.location.protocol)) {
+      return `/${name}`;
+    }
+    return `./${name}`;
+  }
   return `${prefix}${name}`;
 };

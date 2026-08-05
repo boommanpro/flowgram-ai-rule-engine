@@ -13,8 +13,31 @@ import {
   type WorkflowPortEntity,
   type WorkflowLineEntity,
 } from '@flowgram.ai/free-layout-editor';
+import { usePanelManager } from '@flowgram.ai/panel-manager-plugin';
 
 import { setCanvasContext, type CanvasContext } from './tools';
+import { agentRunBridge } from './agent-run-bridge';
+
+/**
+ * 深度合并节点 data：数组整体替换，对象递归合并，其余直接覆盖
+ */
+function deepMergeNodeData(target: any, source: any): any {
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    if (Array.isArray(source[key])) {
+      result[key] = source[key]; // arrays replaced wholesale
+    } else if (
+      source[key] &&
+      typeof source[key] === 'object' &&
+      !Array.isArray(source[key])
+    ) {
+      result[key] = deepMergeNodeData(result[key] || {}, source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+  return result;
+}
 
 /**
  * 无需渲染任何 UI，仅作为画布上下文注入桥
@@ -23,6 +46,7 @@ export const EditorCanvasBridge: React.FC = () => {
   const ctx = useClientContext();
   const tools = usePlaygroundTools();
   const linesManager = useService(WorkflowLinesManager);
+  const panelManager = usePanelManager();
 
   useEffect(() => {
     if (!ctx?.document) return;
@@ -95,6 +119,70 @@ export const EditorCanvasBridge: React.FC = () => {
         });
       },
 
+      updateNodeData: (nodeId: string, data: Record<string, any>) => {
+        const node = ctx.document.getNode(nodeId) as any;
+        if (!node) return false;
+        const currentData = node.data || {};
+        const merged = deepMergeNodeData(currentData, data);
+        if (node.updateData) {
+          node.updateData(merged);
+        }
+        return true;
+      },
+
+      getAvailableVariables: () => {
+        const doc = ctx.document.toJSON();
+        const result: Array<{
+          nodeId: string;
+          nodeTitle: string;
+          nodeType: string;
+          outputs: Array<{ name: string; type: string }>;
+        }> = [];
+        for (const node of doc.nodes || []) {
+          const outputs = node.data?.outputs?.properties;
+          if (outputs && typeof outputs === 'object') {
+            const vars = Object.entries(outputs).map(([name, schema]) => ({
+              name,
+              type: (schema as any)?.type || 'string',
+            }));
+            result.push({
+              nodeId: node.id,
+              nodeTitle: node.data?.title || node.id,
+              nodeType: String(node.type),
+              outputs: vars,
+            });
+          }
+        }
+        return result;
+      },
+
+      runWorkflow: async (inputs?: Record<string, any>) => {
+        try {
+          // Open test run panel
+          panelManager.open('test-run-panel', 'right');
+          // Fit view
+          void tools.fitView();
+          // The test run panel will handle actual execution
+          return { success: true, result: { message: 'Test run panel opened' } };
+        } catch (e) {
+          return { success: false, error: (e as Error).message };
+        }
+      },
+
+      runNode: async (nodeId: string, inputs?: Record<string, any>) => {
+        try {
+          panelManager.open('single-node-test-panel', 'right', {
+            props: { nodeId },
+          });
+          return {
+            success: true,
+            result: { message: `Node test panel opened for ${nodeId}` },
+          };
+        } catch (e) {
+          return { success: false, error: (e as Error).message };
+        }
+      },
+
       get selectedNodeId() {
         const selection = ctx.selection?.selection;
         if (!selection || selection.length === 0) return undefined;
@@ -113,7 +201,35 @@ export const EditorCanvasBridge: React.FC = () => {
     return () => {
       setCanvasContext(null);
     };
-  }, [ctx, tools, linesManager]);
+  }, [ctx, tools, linesManager, panelManager]);
+
+  // Register as the agentRunBridge listener (canvas side).
+  // Handles run requests sent before this listener was mounted via pending replay.
+  useEffect(() => {
+    agentRunBridge.onRequest((request) => {
+      if (request.type === 'runWorkflow') {
+        panelManager.open('test-run-panel', 'right');
+        void tools.fitView();
+        agentRunBridge.respond({
+          requestId: request.id,
+          success: true,
+          result: { message: 'Test run panel opened' },
+        });
+      } else if (request.type === 'runNode' && request.nodeId) {
+        panelManager.open('single-node-test-panel', 'right', {
+          props: { nodeId: request.nodeId },
+        });
+        agentRunBridge.respond({
+          requestId: request.id,
+          success: true,
+          result: { message: `Node test panel opened for ${request.nodeId}` },
+        });
+      }
+    });
+    return () => {
+      agentRunBridge.offRequest();
+    };
+  }, [ctx, panelManager, tools]);
 
   return null;
 };

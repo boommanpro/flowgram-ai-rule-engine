@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
- * Agent 配置
+ * Agent 配置（application.yml 默认值，可被数据库 agent_config 表覆盖）
  */
 @Data
 @Component
@@ -21,6 +21,10 @@ public class AgentProperties {
         private String apiKey = "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
         private String model = "qwen/qwen3-4b-2507";
         private double temperature = 0.5;
+        /** 最大输出 token 数（0 表示不限制） */
+        private int maxTokens = 4096;
+        /** 模型上下文窗口大小（用于历史消息截断参考） */
+        private int contextWindow = 32768;
     }
 
     @Data

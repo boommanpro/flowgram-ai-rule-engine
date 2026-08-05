@@ -1,0 +1,62 @@
+[
+  {
+    "title": "Flowgram 工作流编排总览",
+    "content": "Flowgram 是一个可视化的工作流编排引擎，支持通过拖拽节点来构建复杂业务流程。\n\n## 核心概念\n- 节点（Node）：工作流的基本执行单元，每个节点完成一类任务\n- 边（Edge）：节点之间的连接，定义执行顺序和数据流向\n- 变量引用：节点间通过 ${node_id.field} 语法传递数据\n- 工作流（Workflow）：由节点和边组成的有向无环图（DAG）\n\n## 节点类型分类\n- 流程控制：start、end、condition、multi-condition、branches、loop、break、continue\n- 数据处理：variable、string-format、code\n- 集成调用：http、llm、workflow\n- 人工参与：assignee\n- 组织辅助：comment、group、block-start、block-end\n\n## 编排原则\n1. 每个工作流必须有且仅有一个 start 节点\n2. 至少一个 end 节点接收最终输出\n3. 节点间的数据通过变量引用传递\n4. 复杂逻辑建议拆分为多个小节点而非单个大节点\n5. 循环和条件分支应避免死循环和不可达路径",
+    "source": "flowgram-doc"
+  },
+  {
+    "title": "HTTP 节点使用指南",
+    "content": "HTTP 节点用于在工作流中发起 HTTP 请求，集成外部 API。\n\n## 配置字段\n- method：HTTP 方法（GET/POST/PUT/DELETE/PATCH）\n- url：请求地址，支持变量引用，如 https://api.example.com/users/${start.input.userId}\n- headers：请求头键值对，常用于 Authorization、Content-Type\n- params：URL query 参数\n- body：请求体（POST/PUT 使用），可为 JSON 字符串\n- timeout：超时时间（毫秒），默认 30000\n\n## 输出\n- status：HTTP 状态码（如 200、404、500）\n- response：响应体（已解析的 JSON 对象或字符串）\n- headers：响应头\n\n## 常见用法\n1. 调用 RESTful API 获取数据：GET https://api.example.com/users\n2. 提交数据：POST https://api.example.com/orders，body 为订单 JSON\n3. 鉴权：headers 中添加 Authorization: Bearer ${start.input.token}\n\n## 注意事项\n- 建议设置合理 timeout 防止长时间阻塞\n- 大响应体注意内存占用\n- 错误处理：通过 condition 节点判断 status 决定后续流程",
+    "source": "flowgram-doc"
+  },
+  {
+    "title": "LLM 节点配置指南",
+    "content": "LLM 节点用于调用大语言模型，是 Agent 工作流的核心。\n\n## 配置字段\n- model：模型名称（如 qwen/qwen3-4b-2507）\n- apiHost：LLM 服务地址（如 http://localhost:1234/v1）\n- apiKey：API 密钥\n- temperature：采样温度（0.0-2.0，0 最确定，2 最随机）\n- systemPrompt：系统提示词，定义模型角色和约束\n- userPrompt：用户提示词，支持变量引用\n- maxTokens：最大生成 token 数\n\n## 输出\n- result：模型生成的文本\n- usage：token 使用统计（prompt_tokens、completion_tokens、total_tokens）\n\n## Prompt 编写技巧\n1. systemPrompt 中明确角色和约束，如 \"你是一个数据分析助手\"\n2. userPrompt 中提供具体任务和上下文，使用 ${node.field} 引用上游数据\n3. 复杂任务可拆分为多个 LLM 节点串联\n4. 在 prompt 中要求结构化输出（如 JSON）便于后续解析\n\n## 示例\nsystemPrompt: 你是一个翻译助手，将用户输入翻译为英文\nuserPrompt: ${start.input.text}\n\n## 注意事项\n- 高 temperature 适合创意写作，低 temperature 适合事实性任务\n- 注意 token 限制，长输入需截断或拆分\n- API 不可用时应配置降级逻辑",
+    "source": "flowgram-doc"
+  },
+  {
+    "title": "条件分支：Condition vs Branches vs Multi-Condition",
+    "content": "Flowgram 提供三种条件分支节点，适用不同场景。\n\n## Condition 节点（单条件）\n- 适用：简单的 if-else 二选一\n- 配置：单个条件表达式（left + operator + right）\n- 输出：true / false 两个分支\n- operator：equal、not_equal、greater_than、less_than、greater_than_or_equal、less_than_or_equal、contains、not_contains、is_empty、is_not_empty、is_true、is_false\n\n## Multi-Condition 节点（多条件组合）\n- 适用：复杂组合条件判断\n- 配置：多个子条件通过 AND/OR 组合\n- 输出：多个分支 + default\n- 适合：嵌套条件、多因素决策\n\n## Branches 节点（多路分支）\n- 适用：互斥多路分支，每个分支有独立子流程\n- 配置：每个分支一个 condition + 子流程\n- 输出：每个分支独立路径 + default\n- 适合：根据不同类型走不同处理流程\n\n## 选择建议\n- 单条件判断用 Condition\n- 多条件组合判断用 Multi-Condition\n- 多路独立子流程用 Branches\n- 注意：分支按顺序匹配，命中即停止",
+    "source": "flowgram-doc"
+  },
+  {
+    "title": "循环节点 Loop 与 Break/Continue",
+    "content": "Loop 节点用于循环执行子流程，配合 Break/Continue 控制循环。\n\n## Loop 类型\n- count：固定次数循环，配置 count 上限\n- forEach：遍历列表，配置 iterateOver 列表变量\n- while：条件循环，配置 condition 终止条件\n\n## Break 节点\n- 用于在循环内提前跳出\n- 配合 Condition 使用：满足条件时跳出\n- 只跳出最近的 Loop\n\n## Continue 节点\n- 跳过当前迭代剩余逻辑\n- 进入下一次循环\n- 配合 Condition 使用\n\n## 示例：遍历用户列表处理\n1. Loop（forEach，iterateOver: ${start.input.users}）\n2. 内部 HTTP 节点调用处理 API\n3. Condition 判断处理结果\n4. 失败则 Continue 跳过\n5. 累计成功数后 End 输出\n\n## 注意事项\n- while 循环必须确保条件最终不满足，否则死循环\n- 大列表遍历注意性能和内存\n- 嵌套循环 Break 只跳出内层",
+    "source": "flowgram-doc"
+  },
+  {
+    "title": "变量引用语法详解",
+    "content": "Flowgram 通过 ${node_id.field} 语法在节点间传递数据。\n\n## 基本语法\n- ${start.input.xxx}：引用 Start 节点的输入参数\n- ${node_id.field}：引用某个节点的输出字段\n- ${variable_node.var_name}：引用 Variable 节点的变量\n\n## 支持的位置\n- LLM 节点的 userPrompt、systemPrompt\n- HTTP 节点的 url、headers、params、body\n- Condition 节点的 left、right\n- Code 节点的 inputs\n- String-Format 节点的 template\n- Variable 节点的 value\n- End 节点的 outputs\n\n## 嵌套引用\n- 支持对象嵌套：${http_1.response.body.user.name}\n- 支持数组索引：${loop_1.items[0].id}\n\n## 注意事项\n- 引用的节点必须在上游已执行\n- 字段名需与节点输出 schema 一致\n- 引用未定义的变量会导致运行时错误\n- Variable 节点常用于中间变量中转",
+    "source": "flowgram-doc"
+  },
+  {
+    "title": "Code 节点：动态代码执行",
+    "content": "Code 节点用于执行自定义代码，支持 Java、Groovy、JavaScript。\n\n## 配置字段\n- language：脚本语言（java/groovy/javascript）\n- code：代码内容\n- inputs：输入参数（变量名 + 引用表达式）\n- outputs：输出参数（变量名 + 类型）\n\n## Java 引擎\n- 动态编译执行，需符合编译规范\n- 类名通常为动态生成\n- 通过 inputs 接收上游变量\n- 通过 return 或 outputs 字段返回结果\n\n## Groovy 引擎\n- 脚本式编写，更灵活\n- 适合快速逻辑实现\n- 性能略低于 Java 但开发效率高\n\n## JavaScript 引擎\n- 适合轻量数据处理\n- 通过 JsFunExecNode 执行\n\n## 使用场景\n1. 复杂数据转换（JSON 解析、字段提取）\n2. 算法计算（排序、过滤、聚合）\n3. 业务规则校验\n4. 字符串处理\n\n## 注意事项\n- 注意代码安全，避免执行不可信代码\n- 复杂逻辑建议拆分为多个节点\n- Java 代码需注意类加载和内存",
+    "source": "flowgram-doc"
+  },
+  {
+    "title": "Variable 与 String-Format 节点：数据处理利器",
+    "content": "Variable 和 String-Format 是工作流中数据中转和格式化的常用节点。\n\n## Variable 节点\n- 用途：声明、赋值、修改变量\n- 配置：variables 列表（name、type、value）\n- value 支持变量引用和表达式\n- 输出：变量可在后续节点通过 ${variable_node.var_name} 访问\n- 场景：\n  - 中间变量中转\n  - 数据格式转换\n  - 累加器、计数器\n  - 默认值兜底\n\n## String-Format 节点\n- 用途：基于模板生成字符串\n- 配置：\n  - template：模板字符串，含占位符\n  - engine：模板引擎（thymeleaf/plain）\n  - inputs：变量绑定\n- 输出：formatted（渲染后的字符串）\n- 场景：\n  - Prompt 拼接（结合 LLM 节点）\n  - 邮件、报表模板渲染\n  - URL 拼接\n  - 多变量组合输出\n\n## Thymeleaf 语法示例\ntemplate: Hello [[${user.name}]], your order [[${order.id}]] is [[${order.status}]]\n\n## 普通模式\ntemplate: Hello ${user.name}, your order ${order.id} is ${order.status}\n\n## 选择建议\n- 简单赋值用 Variable\n- 模板渲染用 String-Format\n- 复杂逻辑用 Code",
+    "source": "flowgram-doc"
+  },
+  {
+    "title": "子工作流调用：Workflow 节点",
+    "content": "Workflow 节点用于调用另一个已定义的工作流，实现复用和模块化。\n\n## 配置字段\n- workflowCode：子工作流编码\n- version：子工作流版本（可选，默认最新）\n- inputs：传给子工作流的输入参数\n- outputs：子工作流返回的输出字段\n\n## 执行流程\n1. 父工作流执行到 Workflow 节点\n2. 启动子工作流实例\n3. 等待子工作流执行完成\n4. 子工作流 End 节点的 outputs 作为本节点输出\n5. 父工作流继续执行\n\n## 使用场景\n- 通用子流程复用（如用户查询、订单校验）\n- 复杂工作流模块化拆分\n- 团队协作：不同团队维护不同子工作流\n\n## 注意事项\n- 避免循环引用：A 调用 B，B 不能再调用 A\n- 子工作流异常会传播到父工作流\n- 注意输入输出参数匹配，多余或缺失会报错\n- 嵌套深度不宜过深，影响性能和调试\n- 子工作流的 start 节点 inputs 需与父工作流传入的 inputs 一致",
+    "source": "flowgram-doc"
+  },
+  {
+    "title": "工作流调试与最佳实践",
+    "content": "Flowgram 工作流开发中的调试技巧和最佳实践。\n\n## 调试技巧\n1. 单节点运行：通过 TestRun 单独执行某个节点验证\n2. 变量检查：在关键节点后插入 Variable 节点记录中间状态\n3. 日志输出：使用 Code 节点打印日志辅助排查\n4. 分段测试：先测前半段，再逐步扩展\n5. 边界测试：测试空输入、异常输入、超大数据\n\n## 最佳实践\n1. 单一职责：每个节点只做一件事\n2. 命名清晰：节点 title 描述功能\n3. 注释补充：复杂逻辑加 Comment 节点\n4. 错误处理：HTTP/LLM 节点后加 Condition 判断成功\n5. 变量规范：使用有意义的变量名\n6. 避免深嵌套：循环和条件嵌套不超过 3 层\n7. 复用优先：通用逻辑抽为子工作流\n\n## 性能优化\n- LLM 节点是最慢的，减少不必要的调用\n- HTTP 节点注意 timeout 设置\n- 大列表循环注意批量处理\n- Code 节点避免重计算\n\n## 常见陷阱\n- 变量引用字段名拼写错误\n- Condition 中类型不匹配（字符串 vs 数字）\n- Loop 死循环\n- 子工作流循环引用\n- End 节点 outputs 缺失字段",
+    "source": "flowgram-doc"
+  },
+  {
+    "title": "Assignee 节点：人工任务集成",
+    "content": "Assignee 节点用于在工作流中插入人工任务节点。\n\n## 配置字段\n- assignee：处理人（用户ID 或用户名）\n- taskName：任务名称\n- taskDesc：任务描述\n- form：人工填写的表单字段 schema\n- timeout：任务超时时间\n\n## 执行流程\n1. 工作流执行到 Assignee 节点时暂停\n2. 创建人工任务并通知 assignee\n3. 等待 assignee 处理并提交表单\n4. 表单数据作为节点输出\n5. 工作流继续执行\n\n## 表单设计\n- 字段：name、type、required、default、options\n- 类型：text、number、select、textarea、date\n- 示例：审批节点表单包含 approved（boolean）、comment（text）\n\n## 使用场景\n- 审批流程（请假、报销、合同）\n- 数据录入（人工补充信息）\n- 决策确认（人工选择路径）\n- 异常处理（人工介入）\n\n## 注意事项\n- 需要外部任务系统集成\n- 注意超时处理策略（自动通过、自动拒绝、升级处理）\n- 表单字段设计应简洁明了\n- 处理人离职时需要转交机制",
+    "source": "flowgram-doc"
+  },
+  {
+    "title": "Block 节点：逻辑块组织",
+    "content": "Block-Start 和 Block-End 节点用于组织逻辑块。\n\n## 用途\n- 定义代码块/逻辑块边界\n- 配合 Loop 节点界定循环体\n- 配合条件节点界定条件块\n- 提升可读性\n\n## 配置\n- Block-Start：blockId（块标识）\n- Block-End：blockId（与对应 Block-Start 一致）\n- 二者必须成对出现\n\n## 使用场景\n1. Loop 循环体：Block-Start ... 循环内容 ... Block-End\n2. Condition 条件块：明确条件作用范围\n3. 复杂流程的视觉分组\n\n## 注意事项\n- Block-Start 必须有对应的 Block-End\n- 块内不能跨越 Loop/Condition 边界\n- 嵌套块需保证 blockId 唯一\n- Block 不影响执行逻辑，仅用于组织\n- 与 Group 节点的区别：Block 是逻辑边界，Group 是视觉分组",
+    "source": "flowgram-doc"
+  }
+]

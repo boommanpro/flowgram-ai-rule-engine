@@ -4,6 +4,7 @@
  */
 import { merge } from 'lodash-es';
 import { nanoid } from 'nanoid';
+import { normalizeNodeData } from './normalize';
 
 export interface NodeTemplate {
   id: string;
@@ -122,7 +123,8 @@ export function createNodeByType(
   title?: string
 ): NodeTemplate {
   const template = templates[type] || templates['variable'];
-  const mergedData = merge({}, template, data || {});
+  const normalizedData = normalizeNodeData(type, data || {});
+  const mergedData = merge({}, template, normalizedData);
   if (title) {
     mergedData.title = title;
   }

@@ -13,12 +13,13 @@ import {
   Rectangle,
   ShortcutsHandler,
   WorkflowDocument,
-  WorkflowDragService,
-  WorkflowHoverService,
   WorkflowJSON,
   WorkflowNodeEntity,
+  WorkflowNodeJSON,
   WorkflowNodeMeta,
   WorkflowSelectService,
+  WorkflowDragService,
+  WorkflowHoverService,
   Playground,
 } from '@flowgram.ai/free-layout-editor';
 import { Toast } from '@douyinfe/semi-ui';
@@ -97,6 +98,33 @@ export class PasteShortcut implements ShortcutsHandler {
       json: rawJSON,
       isUniqueId: (id: string) => !this.entityManager.getEntityById(id),
     });
+
+    // Defense 2: Start/End uniqueness — skip pasting start/end nodes if one already exists
+    const existingDoc = this.document.toJSON();
+    const existingTypes = new Set<string>(
+      (existingDoc.nodes || []).map((n: any) => n.type)
+    );
+    const skippedNodeIds = new Set<string>();
+    json.nodes = json.nodes.filter((node: WorkflowNodeJSON) => {
+      if (node.type === 'start' || node.type === 'end') {
+        if (existingTypes.has(node.type)) {
+          console.warn(
+            `[Paste] ${node.type} node already exists on canvas, skipping paste of node ${node.id}`
+          );
+          skippedNodeIds.add(node.id);
+          return false;
+        }
+      }
+      return true;
+    });
+    // Remove edges that reference skipped nodes
+    if (skippedNodeIds.size > 0) {
+      json.edges = (json.edges || []).filter((edge: any) => {
+        if (skippedNodeIds.has(edge.sourceNodeID)) return false;
+        if (skippedNodeIds.has(edge.targetNodeID)) return false;
+        return true;
+      });
+    }
 
     const offset = this.calcPasteOffset(data.bounds);
     let parent = this.getSelectedContainer();

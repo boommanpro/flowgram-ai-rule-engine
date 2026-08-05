@@ -1,0 +1,395 @@
+{
+  "nodes": [
+    {
+      "nodeKey": "concept_workflow",
+      "nodeType": "concept",
+      "title": "工作流编排",
+      "description": "Flowgram 工作流编排引擎的核心概念，通过节点和边构建业务流程"
+    },
+    {
+      "nodeKey": "concept_node",
+      "nodeType": "concept",
+      "title": "节点",
+      "description": "工作流的基本执行单元，每个节点完成一类任务"
+    },
+    {
+      "nodeKey": "concept_edge",
+      "nodeType": "concept",
+      "title": "边",
+      "description": "节点之间的连接，定义执行顺序和数据流向"
+    },
+    {
+      "nodeKey": "concept_variable_ref",
+      "nodeType": "concept",
+      "title": "变量引用",
+      "description": "通过 ${node_id.field} 语法在节点间传递数据"
+    },
+    {
+      "nodeKey": "concept_dag",
+      "nodeType": "concept",
+      "title": "有向无环图",
+      "description": "工作流本质是一个有向无环图（DAG），节点为顶点，边为有向边"
+    },
+    {
+      "nodeKey": "node_type_start",
+      "nodeType": "node-type",
+      "title": "Start 节点",
+      "description": "工作流入口节点，每个工作流必须有且仅有一个"
+    },
+    {
+      "nodeKey": "node_type_end",
+      "nodeType": "node-type",
+      "title": "End 节点",
+      "description": "工作流结束节点，输出最终结果，可有多个"
+    },
+    {
+      "nodeKey": "node_type_llm",
+      "nodeType": "node-type",
+      "title": "LLM 节点",
+      "description": "调用大语言模型，完成文本生成、对话、推理等任务"
+    },
+    {
+      "nodeKey": "node_type_http",
+      "nodeType": "node-type",
+      "title": "HTTP 节点",
+      "description": "发起 HTTP 请求，集成外部 API 或服务"
+    },
+    {
+      "nodeKey": "node_type_code",
+      "nodeType": "node-type",
+      "title": "Code 节点",
+      "description": "执行自定义代码（Java/Groovy/JavaScript）"
+    },
+    {
+      "nodeKey": "node_type_condition",
+      "nodeType": "node-type",
+      "title": "Condition 节点",
+      "description": "单条件分支，实现 if-else 逻辑"
+    },
+    {
+      "nodeKey": "node_type_multi_condition",
+      "nodeType": "node-type",
+      "title": "Multi-Condition 节点",
+      "description": "多条件组合分支，支持 AND/OR 组合"
+    },
+    {
+      "nodeKey": "node_type_branches",
+      "nodeType": "node-type",
+      "title": "Branches 节点",
+      "description": "多路互斥分支，每个分支有独立子流程"
+    },
+    {
+      "nodeKey": "node_type_loop",
+      "nodeType": "node-type",
+      "title": "Loop 节点",
+      "description": "循环节点，支持 count/forEach/while 三种模式"
+    },
+    {
+      "nodeKey": "node_type_break",
+      "nodeType": "node-type",
+      "title": "Break 节点",
+      "description": "跳出循环，配合 Loop 使用"
+    },
+    {
+      "nodeKey": "node_type_continue",
+      "nodeType": "node-type",
+      "title": "Continue 节点",
+      "description": "跳过本次循环迭代，配合 Loop 使用"
+    },
+    {
+      "nodeKey": "node_type_variable",
+      "nodeType": "node-type",
+      "title": "Variable 节点",
+      "description": "声明、赋值、修改变量"
+    },
+    {
+      "nodeKey": "node_type_string_format",
+      "nodeType": "node-type",
+      "title": "String-Format 节点",
+      "description": "基于模板生成字符串，支持 Thymeleaf 等引擎"
+    },
+    {
+      "nodeKey": "node_type_assignee",
+      "nodeType": "node-type",
+      "title": "Assignee 节点",
+      "description": "人工任务节点，将任务分配给指定人员处理"
+    },
+    {
+      "nodeKey": "node_type_workflow",
+      "nodeType": "node-type",
+      "title": "Workflow 节点",
+      "description": "调用子工作流，实现复用和模块化"
+    },
+    {
+      "nodeKey": "node_type_block_start",
+      "nodeType": "node-type",
+      "title": "Block-Start 节点",
+      "description": "逻辑块开始标记，与 Block-End 配对使用"
+    },
+    {
+      "nodeKey": "node_type_block_end",
+      "nodeType": "node-type",
+      "title": "Block-End 节点",
+      "description": "逻辑块结束标记，与 Block-Start 配对使用"
+    },
+    {
+      "nodeKey": "node_type_comment",
+      "nodeType": "node-type",
+      "title": "Comment 节点",
+      "description": "注释节点，不参与执行，仅用于文档化"
+    },
+    {
+      "nodeKey": "node_type_group",
+      "nodeType": "node-type",
+      "title": "Group 节点",
+      "description": "节点视觉分组，不影响执行逻辑"
+    },
+    {
+      "nodeKey": "tool_llm_api",
+      "nodeType": "tool",
+      "title": "LLM API",
+      "description": "大语言模型推理服务，提供文本生成、对话、Embedding 等能力"
+    },
+    {
+      "nodeKey": "tool_http_client",
+      "nodeType": "tool",
+      "title": "HTTP Client",
+      "description": "HTTP 客户端，发起外部 API 请求"
+    },
+    {
+      "nodeKey": "tool_code_compiler",
+      "nodeType": "tool",
+      "title": "Code Compiler",
+      "description": "动态代码编译执行引擎，支持 Java/Groovy/JavaScript"
+    },
+    {
+      "nodeKey": "tool_template_engine",
+      "nodeType": "tool",
+      "title": "Template Engine",
+      "description": "模板引擎，支持 Thymeleaf 等渲染字符串"
+    },
+    {
+      "nodeKey": "tool_embedding",
+      "nodeType": "tool",
+      "title": "Embedding Service",
+      "description": "向量化服务，将文本转为向量用于语义检索"
+    }
+  ],
+  "edges": [
+    {
+      "sourceKey": "concept_workflow",
+      "targetKey": "concept_node",
+      "edgeType": "contains"
+    },
+    {
+      "sourceKey": "concept_workflow",
+      "targetKey": "concept_edge",
+      "edgeType": "contains"
+    },
+    {
+      "sourceKey": "concept_workflow",
+      "targetKey": "concept_variable_ref",
+      "edgeType": "contains"
+    },
+    {
+      "sourceKey": "concept_workflow",
+      "targetKey": "concept_dag",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "concept_node",
+      "targetKey": "concept_edge",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "concept_node",
+      "targetKey": "concept_variable_ref",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "concept_workflow",
+      "targetKey": "node_type_start",
+      "edgeType": "contains"
+    },
+    {
+      "sourceKey": "concept_workflow",
+      "targetKey": "node_type_end",
+      "edgeType": "contains"
+    },
+    {
+      "sourceKey": "concept_workflow",
+      "targetKey": "node_type_llm",
+      "edgeType": "contains"
+    },
+    {
+      "sourceKey": "concept_workflow",
+      "targetKey": "node_type_http",
+      "edgeType": "contains"
+    },
+    {
+      "sourceKey": "concept_workflow",
+      "targetKey": "node_type_condition",
+      "edgeType": "contains"
+    },
+    {
+      "sourceKey": "concept_workflow",
+      "targetKey": "node_type_loop",
+      "edgeType": "contains"
+    },
+    {
+      "sourceKey": "node_type_start",
+      "targetKey": "node_type_end",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_start",
+      "targetKey": "concept_variable_ref",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_llm",
+      "targetKey": "tool_llm_api",
+      "edgeType": "depends-on"
+    },
+    {
+      "sourceKey": "node_type_llm",
+      "targetKey": "node_type_variable",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_llm",
+      "targetKey": "node_type_string_format",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_llm",
+      "targetKey": "concept_variable_ref",
+      "edgeType": "depends-on"
+    },
+    {
+      "sourceKey": "node_type_http",
+      "targetKey": "tool_http_client",
+      "edgeType": "depends-on"
+    },
+    {
+      "sourceKey": "node_type_http",
+      "targetKey": "concept_variable_ref",
+      "edgeType": "depends-on"
+    },
+    {
+      "sourceKey": "node_type_http",
+      "targetKey": "node_type_condition",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_code",
+      "targetKey": "tool_code_compiler",
+      "edgeType": "depends-on"
+    },
+    {
+      "sourceKey": "node_type_code",
+      "targetKey": "concept_variable_ref",
+      "edgeType": "depends-on"
+    },
+    {
+      "sourceKey": "node_type_condition",
+      "targetKey": "node_type_multi_condition",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_condition",
+      "targetKey": "node_type_branches",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_multi_condition",
+      "targetKey": "node_type_branches",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_loop",
+      "targetKey": "node_type_break",
+      "edgeType": "contains"
+    },
+    {
+      "sourceKey": "node_type_loop",
+      "targetKey": "node_type_continue",
+      "edgeType": "contains"
+    },
+    {
+      "sourceKey": "node_type_loop",
+      "targetKey": "node_type_block_start",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_loop",
+      "targetKey": "node_type_block_end",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_break",
+      "targetKey": "node_type_loop",
+      "edgeType": "depends-on"
+    },
+    {
+      "sourceKey": "node_type_continue",
+      "targetKey": "node_type_loop",
+      "edgeType": "depends-on"
+    },
+    {
+      "sourceKey": "node_type_block_start",
+      "targetKey": "node_type_block_end",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_block_end",
+      "targetKey": "node_type_block_start",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_variable",
+      "targetKey": "concept_variable_ref",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_string_format",
+      "targetKey": "tool_template_engine",
+      "edgeType": "depends-on"
+    },
+    {
+      "sourceKey": "node_type_string_format",
+      "targetKey": "concept_variable_ref",
+      "edgeType": "depends-on"
+    },
+    {
+      "sourceKey": "node_type_workflow",
+      "targetKey": "concept_workflow",
+      "edgeType": "depends-on"
+    },
+    {
+      "sourceKey": "node_type_workflow",
+      "targetKey": "node_type_start",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_workflow",
+      "targetKey": "node_type_end",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_assignee",
+      "targetKey": "concept_variable_ref",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "node_type_llm",
+      "targetKey": "tool_embedding",
+      "edgeType": "related"
+    },
+    {
+      "sourceKey": "tool_embedding",
+      "targetKey": "tool_llm_api",
+      "edgeType": "depends-on"
+    }
+  ]
+}

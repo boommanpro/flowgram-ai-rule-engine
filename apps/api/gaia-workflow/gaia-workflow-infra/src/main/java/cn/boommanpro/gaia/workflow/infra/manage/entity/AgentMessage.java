@@ -50,6 +50,18 @@ public class AgentMessage {
     @TableField("page_context")
     private String pageContext;
 
+    /**
+     * 多模态图片数据（JSON 数组，base64）
+     */
+    @TableField("images")
+    private String images;
+
+    /**
+     * 父消息 ID（线程引用）
+     */
+    @TableField("parent_message_id")
+    private String parentMessageId;
+
     @TableField("created_at")
     private LocalDateTime createdAt;
 }

@@ -23,6 +23,19 @@ export interface CanvasContext {
   removeLine: (from: string, to: string) => void;
   /** 自动布局 */
   autoLayout: () => void;
+  /** Deep merge node data (arrays replaced wholesale) */
+  updateNodeData: (nodeId: string, data: Record<string, any>) => boolean;
+  /** Get available variables grouped by source node */
+  getAvailableVariables: () => Array<{
+    nodeId: string;
+    nodeTitle: string;
+    nodeType: string;
+    outputs: Array<{ name: string; type: string }>;
+  }>;
+  /** Run the entire workflow (opens test run panel) */
+  runWorkflow: (inputs?: Record<string, any>) => Promise<{ success: boolean; result?: any; error?: string }>;
+  /** Run a single node (opens single node test panel) */
+  runNode: (nodeId: string, inputs?: Record<string, any>) => Promise<{ success: boolean; result?: any; error?: string }>;
   /** 选中的节点 ID */
   selectedNodeId?: string;
 }
@@ -152,8 +165,14 @@ export function createToolExecutor(navigate: NavigateFn): ToolExecutor {
           // ===== 画布类 =====
           case 'addNode':
             return executeCanvasAction(action, args);
-          case 'updateNode':
-            return executeCanvasAction(action, args);
+          case 'updateNode': {
+            const ctx = getCanvasContext();
+            if (!ctx) {
+              return { result: '{"error":"not in editor page"}', rejected: false };
+            }
+            const success = ctx.updateNodeData(args.nodeId, args.data);
+            return { result: JSON.stringify({ success }), rejected: false };
+          }
           case 'deleteNode':
             return executeCanvasAction(action, args);
           case 'connect':
@@ -162,6 +181,39 @@ export function createToolExecutor(navigate: NavigateFn): ToolExecutor {
             return executeCanvasAction(action, args);
           case 'autoLayout':
             return executeCanvasAction(action, args);
+          case 'runWorkflow': {
+            const ctx = getCanvasContext();
+            if (!ctx) {
+              return { result: '{"error":"not in editor page"}', rejected: false };
+            }
+            const result = await ctx.runWorkflow(args.inputs);
+            return { result: JSON.stringify(result), rejected: false };
+          }
+          case 'runNode': {
+            const ctx = getCanvasContext();
+            if (!ctx) {
+              return { result: '{"error":"not in editor page"}', rejected: false };
+            }
+            const result = await ctx.runNode(args.nodeId, args.inputs);
+            return { result: JSON.stringify(result), rejected: false };
+          }
+          case 'getAvailableVariables': {
+            const ctx = getCanvasContext();
+            if (!ctx) {
+              return { result: '{"error":"not in editor page"}', rejected: false };
+            }
+            const vars = ctx.getAvailableVariables();
+            return { result: JSON.stringify(vars), rejected: false };
+          }
+          case 'debugNode': {
+            // Silent execution via subagent SSE, no permission confirmation.
+            // The subagent flow is handled by AgentContext; here we return a
+            // placeholder and the actual subagent SSE is triggered by the caller.
+            return {
+              result: JSON.stringify({ success: true, message: 'debugNode triggered via subagent' }),
+              rejected: false,
+            };
+          }
 
           // ===== Plan 类 =====
           case 'createPlan':
@@ -197,6 +249,19 @@ function executeCanvasAction(action: string, args: Record<string, any>): { resul
   try {
     switch (action) {
       case 'addNode': {
+        // Defense 1: Start/End uniqueness — only one start/end node allowed per workflow
+        if (args.type === 'start' || args.type === 'end') {
+          const doc = ctx.toJSON();
+          const exists = doc.nodes?.some((n: any) => n.type === args.type);
+          if (exists) {
+            return {
+              result: JSON.stringify({
+                error: `${args.type} node already exists. Only one ${args.type} node is allowed per workflow.`,
+              }),
+              rejected: false,
+            };
+          }
+        }
         const template = createNodeByType(args.type, args.data, args.title);
         const position = args.afterNodeId
           ? findPositionAfter(ctx, args.afterNodeId)
@@ -206,16 +271,6 @@ function executeCanvasAction(action: string, args: Record<string, any>): { resul
           result: JSON.stringify({ success: true, nodeId: node?.id || template.id }),
           rejected: false,
         };
-      }
-      case 'updateNode': {
-        const node = ctx.getNodeById(args.nodeId);
-        if (!node) {
-          return { result: '{"error":"node not found"}', rejected: false };
-        }
-        if (node.updateData) {
-          node.updateData(args.data);
-        }
-        return { result: '{"success":true}', rejected: false };
       }
       case 'deleteNode': {
         ctx.deleteNode(args.nodeId);

@@ -5,7 +5,9 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 
 import { useAgent } from './AgentContext';
+import { useLanguage, t } from '../i18n';
 import PlanCard from './PlanCard';
+import SubagentCard from './SubagentCard';
 import Markdown from './Markdown';
 import type { DisplayMessage, ToolCallEvent } from './types';
 
@@ -51,6 +53,7 @@ const MarkdownStyle: React.FC = () => (
     .md-body .md-link:hover { text-decoration: underline; }
     .md-body strong { font-weight: 600; }
     .md-body em { font-style: italic; }
+    @keyframes tool-spin { to { transform: rotate(360deg); } }
   `}</style>
 );
 
@@ -73,11 +76,11 @@ function summarizeArgs(args: Record<string, any>): string {
 function policyLabel(policy: string): { text: string; color: string; bg: string } {
   switch (policy) {
     case 'always':
-      return { text: '总是允许', color: '#1f9d55', bg: '#e6f6ee' };
+      return { text: t('agent.policyAlways'), color: '#1f9d55', bg: '#e6f6ee' };
     case 'confirm':
-      return { text: '需确认', color: '#b7791f', bg: '#fdf3e0' };
+      return { text: t('agent.policyConfirm'), color: '#b7791f', bg: '#fdf3e0' };
     case 'forbid':
-      return { text: '禁止', color: '#e5404e', bg: '#fdecee' };
+      return { text: t('agent.policyForbid'), color: '#e5404e', bg: '#fdecee' };
     default:
       return { text: policy, color: '#666', bg: '#f0f0f0' };
   }
@@ -99,7 +102,7 @@ const ToolCallCard: React.FC<{ toolCall: ToolCallEvent }> = ({ toolCall }) => {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-        <span style={{ color: '#999', fontSize: '11px' }}>工具调用</span>
+        <span style={{ color: '#999', fontSize: '11px' }}>{t('agent.toolCall')}</span>
         <span style={{ color: ACCENT, fontWeight: 600 }}>{toolCall.action}</span>
         <span
           style={{
@@ -162,7 +165,7 @@ const ToolResultCard: React.FC<{ content: string }> = ({ content }) => {
         onClick={toggle}
         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
       >
-        <span style={{ color: '#aaa' }}>{expanded ? '▾' : '▸'} 结果</span>
+        <span style={{ color: '#aaa' }}>{expanded ? '▾' : '▸'} {t('agent.toolResult')}</span>
         {!expanded && (
           <span style={{ color: '#999', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {preview}
@@ -184,6 +187,162 @@ const ToolResultCard: React.FC<{ content: string }> = ({ content }) => {
           {prettyContent}
         </pre>
       )}
+    </div>
+  );
+};
+
+/** 工具状态图标：pending/running(旋转) / done(✓) / error(✕) */
+const ToolStatusIcon: React.FC<{ toolCall: ToolCallEvent }> = ({ toolCall }) => {
+  if (toolCall.result === undefined) {
+    // pending / running — spinner
+    return (
+      <span
+        style={{
+          display: 'inline-block',
+          width: '10px',
+          height: '10px',
+          border: '1.5px solid #d0d0e0',
+          borderTopColor: ACCENT,
+          borderRadius: '50%',
+          animation: 'tool-spin 0.8s linear infinite',
+          flexShrink: 0,
+        }}
+      />
+    );
+  }
+  if (toolCall.result && toolCall.result.toLowerCase().includes('error')) {
+    return (
+      <span style={{ color: '#e5404e', fontSize: '13px', lineHeight: 1, flexShrink: 0 }}>✕</span>
+    );
+  }
+  return (
+    <span style={{ color: '#1f9d55', fontSize: '13px', lineHeight: 1, flexShrink: 0 }}>✓</span>
+  );
+};
+
+/** 分组工具调用卡片：将连续的 tool 消息合并为一张卡片 */
+const GroupedToolCard: React.FC<{ messages: DisplayMessage[] }> = ({ messages }) => {
+  const toolCallMsgs = messages.filter((m) => m.toolCall);
+  const resultMsgs = messages.filter((m) => !m.toolCall && m.content);
+
+  if (toolCallMsgs.length === 0 && resultMsgs.length === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-start', padding: '4px 0' }}>
+      <div style={{ maxWidth: '90%', width: '100%' }}>
+        <div
+          style={{
+            background: '#f7f7fa',
+            border: '1px solid #e8e8ea',
+            borderRadius: '8px',
+            overflow: 'hidden',
+          }}
+        >
+          {toolCallMsgs.length > 0 && (
+            <>
+              <div
+                style={{
+                  padding: '6px 10px',
+                  fontSize: '11px',
+                  color: '#999',
+                  borderBottom: '1px solid #eee',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>{t('agent.toolCall')}</span>
+                <span
+                  style={{
+                    background: ACCENT,
+                    color: '#fff',
+                    fontSize: '10px',
+                    padding: '1px 6px',
+                    borderRadius: '8px',
+                    fontWeight: 500,
+                  }}
+                >
+                  {toolCallMsgs.length}
+                </span>
+              </div>
+              {toolCallMsgs.map((m, idx) => {
+                const tc = m.toolCall!;
+                const pl = policyLabel(tc.policy);
+                return (
+                  <div
+                    key={m.id}
+                    style={{
+                      padding: '6px 10px',
+                      borderTop: idx > 0 ? '1px solid #eee' : 'none',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        marginBottom: '2px',
+                      }}
+                    >
+                      <ToolStatusIcon toolCall={tc} />
+                      <span style={{ color: ACCENT, fontWeight: 600 }}>{tc.action}</span>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          color: pl.color,
+                          background: pl.bg,
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {pl.text}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        color: '#666',
+                        fontSize: '11px',
+                        wordBreak: 'break-all',
+                        fontFamily:
+                          "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace",
+                      }}
+                    >
+                      {summarizeArgs(tc.args)}
+                    </div>
+                    {tc.result && (
+                      <div
+                        style={{
+                          color: '#888',
+                          fontSize: '11px',
+                          marginTop: '2px',
+                          wordBreak: 'break-all',
+                          fontFamily:
+                            "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace",
+                        }}
+                      >
+                        {tc.result}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
+          {resultMsgs.map((m, idx) => (
+            <div
+              key={m.id}
+              style={{
+                padding: '6px 10px',
+                borderTop: idx > 0 || toolCallMsgs.length > 0 ? '1px solid #eee' : 'none',
+              }}
+            >
+              <ToolResultCard content={m.content} />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
@@ -249,6 +408,24 @@ const MessageItem: React.FC<{
             optionsDisabled={streaming}
           />
         )}
+        {/* Task 1d: render user-attached images inline below text */}
+        {isUser && message.images && message.images.length > 0 && (
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: message.content ? '6px' : 0 }}>
+            {message.images.map((img, idx) => (
+              <img
+                key={idx}
+                src={img}
+                style={{
+                  width: '80px',
+                  height: '80px',
+                  objectFit: 'cover',
+                  borderRadius: '6px',
+                  display: 'block',
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -291,7 +468,8 @@ const TypingIndicator: React.FC = () => (
 );
 
 export const MessageList: React.FC = () => {
-  const { messages, streaming, sendMessage } = useAgent();
+  const { messages, streaming, sendMessage, queueLength } = useAgent();
+  useLanguage();
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -337,17 +515,17 @@ export const MessageList: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '18px',
-            fontWeight: 700,
           }}
         >
-          AI
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
         </div>
         <div style={{ fontSize: '14px', color: '#666', fontWeight: 500 }}>
-          开始与 Agent 对话
+          {t('agent.welcomeTitle')}
         </div>
         <div style={{ fontSize: '12px', color: '#aaa' }}>
-          你可以让我创建工作流、查询数据、或在画布上操作节点
+          {t('agent.welcomeDesc')}
         </div>
       </div>
     );
@@ -370,17 +548,101 @@ export const MessageList: React.FC = () => {
       }}
     >
       <MarkdownStyle />
-      {messages.map((m) => (
-        <React.Fragment key={m.id}>
-          <MessageItem
-            message={m}
-            streaming={streaming}
-            onOptionClick={handleOptionClick}
-          />
-          {m.planSteps && m.planSteps.length > 0 && <PlanCard steps={m.planSteps} />}
-        </React.Fragment>
-      ))}
+      {(() => {
+        const items: React.ReactNode[] = [];
+        let i = 0;
+        while (i < messages.length) {
+          const m = messages[i];
+          // 跳过内容为空的 assistant 占位消息（避免渲染空气泡）
+          if (m.role === 'assistant' && !m.content) {
+            i++;
+            continue;
+          }
+          // Subagent debug card: render via SubagentCard instead of normal bubble
+          if (m.subagentSteps || m.subagentResult) {
+            items.push(
+              <React.Fragment key={`subagent-${m.id}`}>
+                <SubagentCard message={m} />
+              </React.Fragment>
+            );
+            i++;
+            continue;
+          }
+          if (m.role === 'tool') {
+            // 收集连续的 tool 消息，合并为一张分组卡片
+            const group: DisplayMessage[] = [];
+            while (i < messages.length && messages[i].role === 'tool') {
+              // 跳过内容和 toolCall 均为空的 tool 消息
+              const tm = messages[i];
+              if (!tm.content && !tm.toolCall && !tm.planSteps && !tm.subagentSteps) {
+                i++;
+                continue;
+              }
+              group.push(tm);
+              i++;
+            }
+            if (group.length > 0) {
+              items.push(
+                <React.Fragment key={`tool-group-${group[0].id}`}>
+                  <GroupedToolCard messages={group} />
+                  {group.map((gm) =>
+                    gm.planSteps && gm.planSteps.length > 0 ? (
+                      <PlanCard key={`plan-${gm.id}`} steps={gm.planSteps} />
+                    ) : null
+                  )}
+                </React.Fragment>
+              );
+            }
+          } else {
+            // user / assistant 消息正常渲染
+            items.push(
+              <React.Fragment key={m.id}>
+                <MessageItem
+                  message={m}
+                  streaming={streaming}
+                  onOptionClick={handleOptionClick}
+                />
+                {m.planSteps && m.planSteps.length > 0 && <PlanCard steps={m.planSteps} />}
+              </React.Fragment>
+            );
+            i++;
+          }
+        }
+        return items;
+      })()}
       {showTyping && <TypingIndicator />}
+      {/* 排队消息指示器 */}
+      {queueLength > 0 && streaming && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-start',
+          padding: '4px 0',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '8px 12px',
+            background: '#f7f7fa',
+            border: '1px solid #e8e8ea',
+            borderRadius: '8px',
+            fontSize: '12px',
+            color: '#888',
+          }}>
+            <span style={{
+              display: 'inline-block',
+              width: '10px',
+              height: '10px',
+              border: '1.5px solid #d0d0e0',
+              borderTopColor: ACCENT,
+              borderRadius: '50%',
+              animation: 'tool-spin 0.8s linear infinite',
+              flexShrink: 0,
+            }} />
+            <span>{queueLength} 条消息排队中…</span>
+          </div>
+        </div>
+      )}
       <div ref={bottomRef} />
     </div>
   );

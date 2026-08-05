@@ -1,0 +1,97 @@
+[
+  {
+    "nodeType": "start",
+    "title": "Start 节点（开始节点）",
+    "content": "Start 节点是工作流的入口节点，每个工作流必须有且仅有一个 Start 节点。\n\n## 用途\n- 标记工作流的执行起点\n- 接收外部传入的初始输入参数\n- 作为流程编排的第一步\n\n## 参数\n- inputs：声明工作流的输入参数 schema（变量名、类型、默认值）\n- 这些参数可在后续节点中通过变量引用使用，例如 ${start.input.xxx}\n\n## 配置方式\n在 Start 节点中定义输入参数列表，每个参数包含 name、type、required、default 等字段。后续节点通过变量引用语法访问这些参数。\n\n## 注意事项\n- 一个工作流只允许一个 Start 节点\n- Start 节点不能有入边，只能有出边\n- 输入参数命名应避免与系统保留字冲突"
+  },
+  {
+    "nodeType": "end",
+    "title": "End 节点（结束节点）",
+    "content": "End 节点标记工作流的执行终点，用于输出最终结果。\n\n## 用途\n- 终止工作流执行\n- 返回工作流的最终输出\n- 一个工作流可以有多个 End 节点（条件分支场景）\n\n## 参数\n- outputs：声明输出字段及其取值表达式\n- 输出值可通过变量引用拼接，例如 ${llm_1.result} 或 ${http_1.response.body}\n\n## 配置方式\n在 End 节点中配置 outputs 列表，每个输出项包含 name 和 value 表达式。执行到 End 节点时，工作流停止并将 outputs 作为最终结果返回。\n\n## 注意事项\n- End 节点只能有入边，不能有出边\n- 至少需要一个 End 节点才能形成完整工作流"
+  },
+  {
+    "nodeType": "llm",
+    "title": "LLM 节点（大模型调用）",
+    "content": "LLM 节点用于调用大语言模型（LLM），完成文本生成、对话、推理等任务。\n\n## 用途\n- 调用 LLM API 生成文本\n- 完成问答、摘要、翻译、分类等 NLP 任务\n- 作为 Agent 工作流的智能推理核心\n\n## 参数\n- model：模型名称（如 qwen/qwen3-4b-2507）\n- apiHost：LLM 服务地址\n- apiKey：API 密钥\n- temperature：采样温度（0.0-2.0，越高越随机）\n- systemPrompt：系统提示词\n- userPrompt：用户提示词，支持变量引用\n- maxTokens：最大生成 token 数\n\n## 配置方式\n在 LLM 节点中填写模型参数和 prompt 模板，prompt 中可使用 ${node_id.field} 引用上游节点的输出。执行后 LLM 节点输出 result（生成的文本）和 usage（token 使用量）。\n\n## 注意事项\n- 需要保证 LLM 服务可达\n- prompt 中的变量引用需要在运行时能解析\n- temperature 设置过高可能导致输出不稳定"
+  },
+  {
+    "nodeType": "http",
+    "title": "HTTP 节点（HTTP 请求）",
+    "content": "HTTP 节点用于发起 HTTP/HTTPS 请求，集成外部 API 或服务。\n\n## 用途\n- 调用 RESTful API\n- 获取外部数据\n- 触发外部系统操作\n\n## 参数\n- method：HTTP 方法（GET/POST/PUT/DELETE/PATCH）\n- url：请求地址，支持变量引用\n- headers：请求头键值对\n- params：URL query 参数\n- body：请求体（POST/PUT 使用）\n- timeout：请求超时时间（毫秒）\n\n## 配置方式\n在 HTTP 节点中配置 method、url、headers、params、body。所有字段都支持变量引用，例如 url 可以是 https://api.example.com/${start.input.id}。执行后输出 status（状态码）、response（响应体）、headers（响应头）。\n\n## 注意事项\n- 注意设置合理 timeout 防止长时间阻塞\n- 敏感信息（如 API Key）建议放在 headers 中\n- 返回值需要按 JSON 或文本解析"
+  },
+  {
+    "nodeType": "code",
+    "title": "Code 节点（代码执行）",
+    "content": "Code 节点用于执行自定义代码逻辑，支持 Java、Groovy、JavaScript 等多种脚本引擎。\n\n## 用途\n- 实现复杂的业务逻辑\n- 数据转换与处理\n- 算法计算\n\n## 参数\n- language：脚本语言（java/groovy/javascript）\n- code：代码内容\n- inputs：输入参数列表（变量名 + 引用表达式）\n- outputs：输出参数列表（变量名 + 类型）\n\n## 配置方式\n在 Code 节点中编写代码，通过 inputs 接收上游变量，通过 outputs 声明返回值。Java/Groovy 引擎会动态编译代码并执行。执行后输出每个 output 字段。\n\n## 注意事项\n- Java 代码需要符合动态编译规范\n- 注意代码安全性，避免执行不可信代码\n- 复杂逻辑建议拆分为多个节点便于调试"
+  },
+  {
+    "nodeType": "condition",
+    "title": "Condition 节点（单条件分支）",
+    "content": "Condition 节点用于基于单个条件判断进行流程分支。\n\n## 用途\n- 根据条件选择执行路径\n- 实现 if-else 逻辑\n\n## 参数\n- condition：条件表达式，包含 left（左值）、operator（操作符）、right（右值）\n- operator 支持：equal、not_equal、greater_than、less_than、greater_than_or_equal、less_than_or_equal、contains、not_contains、is_empty、is_not_empty、is_true、is_false\n\n## 配置方式\n配置一个条件表达式，节点根据条件真假分别走向 true 分支或 false 分支。left/right 支持变量引用。\n\n## 注意事项\n- Condition 节点只有两个出边（true/false）\n- 多条件场景请使用 multi-condition 或 branches 节点\n- 注意类型匹配（字符串与数字比较）"
+  },
+  {
+    "nodeType": "multi-condition",
+    "title": "Multi-Condition 节点（多条件分支）",
+    "content": "Multi-Condition 节点用于基于多个条件进行流程分支，支持复杂的组合判断逻辑。\n\n## 用途\n- 实现多路分支（switch-case 语义）\n- 组合多个条件判断\n- 嵌套条件逻辑\n\n## 参数\n- conditions：条件列表，每个条件包含多个子条件（AND/OR 组合）\n- 每个分支可配置独立的出边\n- 可设置默认分支（所有条件都不满足时走 default）\n\n## 配置方式\n配置多个分支条件，每个分支由若干子条件通过 AND/OR 组合而成。执行时按顺序匹配，命中第一个满足的分支后跳出。\n\n## 注意事项\n- 分支顺序很重要，前面的分支优先匹配\n- 建议设置 default 分支兜底\n- 条件表达式中的变量引用需要正确解析"
+  },
+  {
+    "nodeType": "loop",
+    "title": "Loop 节点（循环）",
+    "content": "Loop 节点用于循环执行一段子流程，支持固定次数、列表遍历、条件循环等模式。\n\n## 用途\n- 批量处理列表数据\n- 重复执行任务直到满足条件\n- 实现 for/while 循环语义\n\n## 参数\n- loopType：循环类型（count/forEach/while）\n- count：固定次数循环的上限\n- iterateOver：要遍历的列表变量\n- condition：while 循环的终止条件\n- 子流程：loop 节点内部的节点链\n\n## 配置方式\n配置循环类型和参数，在 loop 节点内部编排子流程。每次迭代可访问当前元素（forEach）或计数器（count）。可结合 break/continue 节点控制循环流程。\n\n## 注意事项\n- 注意避免死循环，while 模式必须确保条件最终不满足\n- 子流程中的变量作用域需注意\n- 大列表遍历注意性能"
+  },
+  {
+    "nodeType": "branches",
+    "title": "Branches 节点（多路分支）",
+    "content": "Branches 节点用于实现多路并行或互斥分支，类似 switch-case 结构。\n\n## 用途\n- 基于多个条件互斥分支\n- 并行执行多路子流程\n- 复杂路由逻辑\n\n## 参数\n- branches：分支列表，每个分支包含 condition（条件）和子流程\n- 可配置 default 分支\n\n## 配置方式\n配置多个分支，每个分支有自己的条件和子流程。执行时按顺序匹配条件，命中后执行对应子流程。可与 Condition 节点配合实现更复杂的逻辑。\n\n## 注意事项\n- 分支按顺序匹配，前面的优先\n- 建议设置 default 兜底\n- 区别于 multi-condition：branches 支持每个分支独立的子流程"
+  },
+  {
+    "nodeType": "assignee",
+    "title": "Assignee 节点（人工审批/任务分配）",
+    "content": "Assignee 节点用于在工作流中插入人工任务节点，将任务分配给指定人员处理。\n\n## 用途\n- 人工审批\n- 任务分配与认领\n- 人工录入数据\n\n## 参数\n- assignee：处理人（用户ID/用户名）\n- taskName：任务名称\n- taskDesc：任务描述\n- form：人工填写的表单字段 schema\n- timeout：任务超时时间\n\n## 配置方式\n配置处理人和表单，工作流执行到该节点时会暂停并等待人工处理。处理完成后表单数据作为节点输出，工作流继续执行。\n\n## 注意事项\n- 需要外部任务系统集成\n- 注意超时处理策略\n- 表单字段设计应简洁明了"
+  },
+  {
+    "nodeType": "variable",
+    "title": "Variable 节点（变量赋值）",
+    "content": "Variable 节点用于在工作流中声明、赋值或修改变量。\n\n## 用途\n- 声明中间变量\n- 修改已有变量的值\n- 数据格式转换与中转\n\n## 参数\n- variables：变量列表，每项包含 name、type、value\n- value 支持变量引用和表达式\n\n## 配置方式\n配置要赋值的变量列表，每个变量可引用上游节点的输出。执行后这些变量可在后续节点中通过 ${node_id.var_name} 访问。\n\n## 注意事项\n- 变量名需符合命名规范\n- 注意变量作用域（节点级 vs 工作流级）\n- 引用上游变量时确保上游已执行"
+  },
+  {
+    "nodeType": "string-format",
+    "title": "String-Format 节点（字符串格式化）",
+    "content": "String-Format 节点用于基于模板生成字符串，支持 Thymeleaf 等模板引擎。\n\n## 用途\n- 模板渲染（邮件、报表、Prompt 拼接）\n- 字符串拼接\n- 多变量组合输出\n\n## 参数\n- template：模板字符串，含变量占位符\n- engine：模板引擎（thymeleaf/plain）\n- inputs：变量绑定列表\n\n## 配置方式\n在 template 中使用占位符（如 ${var} 或 [[${var}]]），通过 inputs 绑定变量值。执行后输出 formatted 字段为渲染后的字符串。\n\n## 注意事项\n- 模板语法需与所选引擎匹配\n- 注意特殊字符转义\n- 复杂模板建议拆分多个节点"
+  },
+  {
+    "nodeType": "block-start",
+    "title": "Block-Start 节点（块开始）",
+    "content": "Block-Start 节点标记一个逻辑块的开始，与 Block-End 节点配对使用。\n\n## 用途\n- 定义代码块/逻辑块边界\n- 配合 Loop 节点界定循环体\n- 配合条件节点界定条件块\n\n## 参数\n- blockId：块标识\n- 与 Block-End 通过 blockId 关联\n\n## 配置方式\nBlock-Start 与 Block-End 必须成对出现，二者通过 blockId 关联。块内的节点构成一个执行单元。\n\n## 注意事项\n- Block-Start 必须有对应的 Block-End\n- 块内不能跨越 Loop/Condition 边界\n- 嵌套块需保证 blockId 唯一"
+  },
+  {
+    "nodeType": "block-end",
+    "title": "Block-End 节点（块结束）",
+    "content": "Block-End 节点标记一个逻辑块的结束，与 Block-Start 节点配对使用。\n\n## 用途\n- 定义代码块/逻辑块边界\n- 标记块执行结束\n\n## 参数\n- blockId：块标识（与对应 Block-Start 一致）\n\n## 配置方式\n与 Block-Start 通过 blockId 关联，二者之间的节点构成一个完整逻辑块。\n\n## 注意事项\n- 必须有对应的 Block-Start\n- blockId 需与 Block-Start 一致\n- 不能单独使用"
+  },
+  {
+    "nodeType": "break",
+    "title": "Break 节点（跳出循环）",
+    "content": "Break 节点用于在循环中提前跳出，终止当前循环。\n\n## 用途\n- 满足条件时提前结束循环\n- 异常情况下中断循环\n\n## 参数\n- 无特殊参数，执行即跳出最近的 Loop\n\n## 配置方式\nBreak 节点通常配合 Condition 节点使用，在满足特定条件时跳出循环。\n\n## 注意事项\n- 只能在 Loop 内部使用\n- 跳出最近的 Loop 节点\n- 嵌套循环只跳出内层"
+  },
+  {
+    "nodeType": "continue",
+    "title": "Continue 节点（跳过本次循环）",
+    "content": "Continue 节点用于跳过当前循环迭代，直接进入下一次循环。\n\n## 用途\n- 跳过当前迭代剩余逻辑\n- 提前进入下一次循环\n\n## 参数\n- 无特殊参数，执行即跳过本次循环\n\n## 配置方式\nContinue 节点通常配合 Condition 节点使用，在满足特定条件时跳过本次迭代。\n\n## 注意事项\n- 只能在 Loop 内部使用\n- 跳过最近的 Loop 当前迭代\n- 注意循环终止条件仍会判断"
+  },
+  {
+    "nodeType": "comment",
+    "title": "Comment 节点（注释）",
+    "content": "Comment 节点用于在工作流画布中添加注释说明，不参与执行。\n\n## 用途\n- 标注工作流设计意图\n- 记录业务说明\n- 辅助团队协作\n\n## 参数\n- content：注释内容\n\n## 配置方式\n在画布上放置 Comment 节点并填写注释内容。Comment 节点不参与工作流执行，仅用于文档化。\n\n## 注意事项\n- 不影响工作流执行\n- 不会被运行时调度\n- 建议关键节点处添加注释"
+  },
+  {
+    "nodeType": "group",
+    "title": "Group 节点（节点分组）",
+    "content": "Group 节点用于将多个相关节点组织成一个视觉分组，便于画布管理。\n\n## 用途\n- 视觉上聚合相关节点\n- 子流程封装\n- 画布组织与导航\n\n## 参数\n- name：分组名称\n- color：分组颜色\n- 子节点：分组内包含的节点\n\n## 配置方式\n在画布上创建 Group 节点，将相关节点拖入分组。Group 不影响执行逻辑，仅用于视觉组织。\n\n## 注意事项\n- 不影响工作流执行逻辑\n- 子节点仍按原有连接关系执行\n- 可嵌套使用"
+  },
+  {
+    "nodeType": "workflow",
+    "title": "Workflow 节点（子工作流调用）",
+    "content": "Workflow 节点用于调用另一个已定义的工作流，实现工作流复用与嵌套。\n\n## 用途\n- 复用已有工作流\n- 工作流嵌套调用\n- 模块化编排\n\n## 参数\n- workflowCode：要调用的子工作流编码\n- version：子工作流版本\n- inputs：传给子工作流的输入参数\n- outputs：子工作流返回的输出字段\n\n## 配置方式\n配置 workflowCode 和 inputs，执行时会启动子工作流并等待其完成，子工作流的输出作为本节点输出。\n\n## 注意事项\n- 注意避免循环引用导致死循环\n- 子工作流异常会影响父工作流\n- 注意输入输出参数匹配"
+  }
+]

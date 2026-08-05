@@ -28,7 +28,8 @@ import { EditorCanvasBridge } from './agent';
 const ACCENT = '#4d53e8';
 
 /**
- * 空工作流的默认数据：仅包含一个 Start 节点
+ * 空工作流的默认数据：包含 Start → End 节点链路
+ * Defense 3: 默认提供 Start/End 唯一节点，确保工作流始终有合法的起止节点
  */
 const emptyWorkflowData = {
   nodes: [
@@ -41,8 +42,23 @@ const emptyWorkflowData = {
         outputs: { type: 'object', properties: {} },
       },
     },
+    {
+      id: 'end_0',
+      type: 'end',
+      meta: { position: { x: 500, y: 200 } },
+      data: {
+        title: 'End',
+        inputsValues: {},
+        inputs: { type: 'object', properties: {} },
+      },
+    },
   ],
-  edges: [],
+  edges: [
+    {
+      sourceNodeID: 'start_0',
+      targetNodeID: 'end_0',
+    },
+  ],
 };
 
 // Editor component that loads workflow data from backend when workflowCode is provided

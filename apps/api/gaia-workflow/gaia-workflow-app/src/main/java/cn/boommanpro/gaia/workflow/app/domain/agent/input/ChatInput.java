@@ -23,4 +23,8 @@ public class ChatInput {
      * 语言（zh-CN / en-US）
      */
     private String locale;
+    /**
+     * 多模态图片数据（base64 编码的 data URL 列表）
+     */
+    private java.util.List<String> images;
 }

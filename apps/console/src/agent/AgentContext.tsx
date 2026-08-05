@@ -14,7 +14,7 @@ import { useLocation } from 'react-router-dom';
 import { nanoid } from 'nanoid';
 
 import { agentApi } from './api';
-import { streamChat, streamToolResult, type ToolResultItem } from './sse-client';
+import { streamChat, streamToolResult, streamCompact, streamSubagent, type ToolResultItem } from './sse-client';
 import type {
   AgentSession,
   AgentMessage,
@@ -39,7 +39,22 @@ interface AgentContextValue {
   messages: DisplayMessage[];
   permissions: Record<string, PermissionPolicy>;
   streaming: boolean;
+  queueLength: number;
   pendingConfirm: ToolCallEvent | null;
+
+  // Token usage tracking (Task 2)
+  tokenUsage: { estimated: number; limit: number };
+  compactContext: () => Promise<void>;
+
+  // Debug entries (Task 3)
+  debugEntries: Array<{
+    id: string;
+    timestamp: number;
+    request?: any;
+    response?: any;
+    context?: any;
+  }>;
+  clearDebugEntries: () => void;
 
   setToolExecutor: (executor: ToolExecutor) => void;
   resolveConfirm: (approved: boolean) => void;
@@ -48,8 +63,13 @@ interface AgentContextValue {
   switchSession: (sessionKey: string) => Promise<void>;
   renameSession: (sessionKey: string, title: string) => Promise<void>;
   deleteSession: (sessionKey: string) => Promise<void>;
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, images?: string[]) => Promise<void>;
+  stopStreaming: () => void;
   updatePermission: (action: string, policy: PermissionPolicy) => Promise<void>;
+  updateGlobalPermission: (action: string, policy: PermissionPolicy) => Promise<void>;
+
+  // Subagent debug flow
+  debugNode: (nodeId: string, instruction: string) => Promise<void>;
 }
 
 const AgentContext = createContext<AgentContextValue | null>(null);
@@ -123,19 +143,37 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [permissions, setPermissions] = useState<Record<string, PermissionPolicy>>({});
   const [streaming, setStreaming] = useState(false);
+  const [queueLength, setQueueLength] = useState(0);
   const [pendingConfirm, setPendingConfirm] = useState<ToolCallEvent | null>(null);
+
+  // Token usage tracking — limit 从模型配置的 contextWindow 获取
+  const [tokenUsage, setTokenUsage] = useState<{ estimated: number; limit: number }>({ estimated: 0, limit: 32768 });
+  // 系统提示词 token 估算（从 context_loaded 事件获取）
+  const systemPromptTokensRef = useRef<number>(0);
+
+  // Debug entries (Task 3)
+  const [debugEntries, setDebugEntries] = useState<Array<{
+    id: string;
+    timestamp: number;
+    request?: any;
+    response?: any;
+    context?: any;
+  }>>([]);
 
   const location = useLocation();
   const toolExecutorRef = useRef<ToolExecutor | null>(null);
   const confirmResolverRef = useRef<((v: boolean) => void) | null>(null);
   const currentSessionKeyRef = useRef<string | null>(null);
+  const messageQueueRef = useRef<Array<{ text: string; images?: string[] }>>([]);
+  const processingRef = useRef<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // 保持 ref 同步
   useEffect(() => {
     currentSessionKeyRef.current = currentSessionKey;
   }, [currentSessionKey]);
 
-  // 初始化：加载会话列表 + 默认权限
+  // 初始化：加载会话列表 + 默认权限 + 模型配置
   useEffect(() => {
     agentApi.listSessions().then((list) => {
       setSessions(list || []);
@@ -145,6 +183,17 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
       }
     }).catch(() => {});
     agentApi.getPermissionDefaults().then(setPermissions).catch(() => {});
+    // 加载模型配置，用 contextWindow 更新 tokenUsage.limit
+    agentApi.listConfigs('llm_config').then((configs) => {
+      if (configs && configs.length > 0) {
+        try {
+          const cfg = JSON.parse(configs[0].configData || '{}');
+          if (cfg.contextWindow && cfg.contextWindow > 0) {
+            setTokenUsage((prev) => ({ estimated: prev.estimated, limit: cfg.contextWindow }));
+          }
+        } catch { /* ignore */ }
+      }
+    }).catch(() => {});
   }, []);
 
   // 切换会话时加载消息和权限
@@ -155,6 +204,36 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
     agentApi.getPermissions(currentSessionKey).then(setPermissions).catch(() => {});
   }, [currentSessionKey]);
+
+  // 会话切换时从 localStorage 加载调试历史
+  useEffect(() => {
+    if (!currentSessionKey) {
+      setDebugEntries([]);
+      return;
+    }
+    try {
+      const stored = localStorage.getItem(`agent-debug-${currentSessionKey}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setDebugEntries(parsed);
+        } else {
+          setDebugEntries([]);
+        }
+      } else {
+        setDebugEntries([]);
+      }
+    } catch {
+      setDebugEntries([]);
+    }
+  }, [currentSessionKey]);
+
+  // 估算 token 使用量（消息 + 系统提示词，4 字符 ≈ 1 token）
+  useEffect(() => {
+    const messageTokens = Math.ceil(JSON.stringify(messages).length / 4);
+    const estimated = messageTokens + systemPromptTokensRef.current;
+    setTokenUsage((prev) => ({ estimated, limit: prev.limit }));
+  }, [messages]);
 
   const setToolExecutor = useCallback((executor: ToolExecutor) => {
     toolExecutorRef.current = executor;
@@ -208,6 +287,10 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
       await agentApi.updatePermission(currentSessionKey, action, policy);
     }
   }, [currentSessionKey]);
+
+  const updateGlobalPermission = useCallback(async (action: string, policy: PermissionPolicy) => {
+    await agentApi.updateGlobalPermission(action, policy);
+  }, []);
 
   /** 显示确认弹窗 */
   const showConfirm = useCallback((event: ToolCallEvent): Promise<boolean> => {
@@ -386,11 +469,55 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     [showConfirm, executePlan]
   );
 
-  /** 发送消息 */
-  const sendMessage = useCallback(
-    async (text: string) => {
+  /** 将调试条目直接持久化到指定会话的 localStorage（不更新当前视图） */
+  const persistDebugEntryToSession = useCallback((sessionKey: string, entry: any) => {
+    try {
+      const key = `agent-debug-${sessionKey}`;
+      const stored = localStorage.getItem(key);
+      const arr = stored ? JSON.parse(stored) : [];
+      if (Array.isArray(arr)) {
+        arr.push(entry);
+        localStorage.setItem(key, JSON.stringify(arr.slice(-50)));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  /** 更新指定会话 localStorage 中的某条调试记录（不更新当前视图） */
+  const updateDebugEntryInSession = useCallback(
+    (sessionKey: string, match: (e: any) => boolean, apply: (e: any) => any) => {
+      try {
+        const key = `agent-debug-${sessionKey}`;
+        const stored = localStorage.getItem(key);
+        if (!stored) return;
+        const arr = JSON.parse(stored);
+        if (!Array.isArray(arr)) return;
+        for (let i = arr.length - 1; i >= 0; i--) {
+          if (match(arr[i])) {
+            arr[i] = apply(arr[i]);
+            break;
+          }
+        }
+        localStorage.setItem(key, JSON.stringify(arr));
+      } catch { /* ignore */ }
+    },
+    []
+  );
+
+  /** 处理消息队列（串行） */
+  const processQueue = useCallback(
+    async () => {
+      if (processingRef.current) return;
       const sessionKey = currentSessionKeyRef.current;
-      if (!sessionKey || streaming) return;
+      if (!sessionKey) return;
+      const nextItem = messageQueueRef.current.shift();
+      if (!nextItem) return;
+      const { text, images } = nextItem;
+      setQueueLength(messageQueueRef.current.length);
+
+      processingRef.current = true;
+      setStreaming(true);
+      abortControllerRef.current = new AbortController();
+      const signal = abortControllerRef.current.signal;
 
       // 添加 user 消息
       const userMsg: DisplayMessage = {
@@ -399,6 +526,9 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
         content: text,
         timestamp: Date.now(),
       };
+      if (images && images.length > 0) {
+        userMsg.images = images;
+      }
 
       // 创建 assistant 占位
       let currentAssistantId = nanoid();
@@ -410,7 +540,6 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
       };
 
       setMessages((prev) => [...prev, userMsg, assistantMsg]);
-      setStreaming(true);
 
       const pendingToolCalls: ToolCallEvent[] = [];
       let errorMsg: string | null = null;
@@ -427,27 +556,93 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
         },
         onToolCall: (event: ToolCallEvent) => {
           pendingToolCalls.push(event);
-          // 添加 tool_call 展示消息
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: nanoid(),
-              role: 'tool' as const,
-              content: '',
-              toolCall: event,
-              timestamp: Date.now(),
-            },
-          ]);
+          // 使用 toolcall-${event.id} 作为消息 ID，支持原地更新
+          setMessages((prev) => {
+            const existingIdx = prev.findIndex(
+              (m) => m.id === `toolcall-${event.id}`
+            );
+            if (existingIdx >= 0) {
+              const updated = [...prev];
+              updated[existingIdx] = { ...updated[existingIdx], toolCall: event };
+              return updated;
+            }
+            return [
+              ...prev,
+              {
+                id: `toolcall-${event.id}`,
+                role: 'tool' as const,
+                content: '',
+                toolCall: event,
+                timestamp: Date.now(),
+              },
+            ];
+          });
         },
         onDone: () => {},
         onError: (msg: string) => {
           errorMsg = msg;
         },
+        // Task 3: debug handlers — 带会话守卫，防止跨会话串数据
+        onDebugRequest: (data: any) => {
+          const entryId = nanoid();
+          const entry = { id: entryId, timestamp: Date.now(), request: data };
+          if (sessionKey === currentSessionKeyRef.current) {
+            // 仍在原会话，更新视图
+            setDebugEntries((prev) => [...prev, entry]);
+          } else {
+            // 已切走，直接落原会话 localStorage，不污染当前视图
+            persistDebugEntryToSession(sessionKey, entry);
+          }
+        },
+        onDebugResponse: (data: any) => {
+          if (sessionKey === currentSessionKeyRef.current) {
+            setDebugEntries((prev) => {
+              const updated = [...prev];
+              for (let i = updated.length - 1; i >= 0; i--) {
+                if (updated[i].request && !updated[i].response) {
+                  updated[i] = { ...updated[i], response: data };
+                  break;
+                }
+              }
+              return updated;
+            });
+          } else {
+            updateDebugEntryInSession(sessionKey, (e) => !e.response, (e) => ({ ...e, response: data }));
+          }
+        },
+        onContextLoaded: (data: any) => {
+          // 用 context_loaded 事件更新 tokenUsage：limit 来自 contextWindow，estimated 追加系统提示词 token
+          if (data.contextWindow && data.contextWindow > 0) {
+            setTokenUsage((prev) => ({ estimated: prev.estimated, limit: data.contextWindow }));
+          }
+          if (data.systemPromptChars) {
+            systemPromptTokensRef.current = Math.ceil(data.systemPromptChars / 4);
+            // 立即重算 estimated
+            setTokenUsage((prev) => ({
+              estimated: Math.ceil(JSON.stringify(messages).length / 4) + systemPromptTokensRef.current,
+              limit: data.contextWindow || prev.limit,
+            }));
+          }
+          if (sessionKey === currentSessionKeyRef.current) {
+            setDebugEntries((prev) => {
+              const updated = [...prev];
+              for (let i = updated.length - 1; i >= 0; i--) {
+                if (!updated[i].context) {
+                  updated[i] = { ...updated[i], context: data };
+                  break;
+                }
+              }
+              return updated;
+            });
+          } else {
+            updateDebugEntryInSession(sessionKey, (e) => !e.context, (e) => ({ ...e, context: data }));
+          }
+        },
       };
 
       try {
         // 第一轮
-        await streamChat(sessionKey, text, getPageContextJson(), handlers);
+        await streamChat(sessionKey, text, getPageContextJson(), handlers, signal, images);
 
         // 后续轮（tool 结果回灌）
         let safetyCounter = 0;
@@ -456,7 +651,22 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
           const calls = pendingToolCalls.splice(0, pendingToolCalls.length);
           const results: ToolResultItem[] = [];
           for (const tc of calls) {
-            results.push(await executeOneTool(tc));
+            const toolResult = await executeOneTool(tc);
+            results.push(toolResult);
+            // 执行完成后，原地更新该工具调用的展示消息
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === `toolcall-${tc.id}` && m.toolCall
+                  ? {
+                      ...m,
+                      toolCall: {
+                        ...m.toolCall,
+                        result: toolResult.result.substring(0, 200),
+                      },
+                    }
+                  : m
+              )
+            );
           }
           // 创建新 assistant 占位
           currentAssistantId = nanoid();
@@ -469,32 +679,183 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
               timestamp: Date.now(),
             },
           ]);
-          await streamToolResult(sessionKey, results, handlers);
+          await streamToolResult(sessionKey, results, handlers, signal);
         }
 
         if (errorMsg) {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === currentAssistantId
-                ? { ...m, content: m.content || `⚠️ ${errorMsg}` }
+                ? { ...m, content: m.content || `[错误] ${errorMsg}` }
                 : m
             )
           );
         }
       } catch (e) {
+        // AbortError 视为优雅停止，不显示错误
+        if (signal.aborted || (e as Error).name === 'AbortError') {
+          // 静默处理
+        } else {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === currentAssistantId
+                ? { ...m, content: m.content || `[错误] ${(e as Error).message}` }
+                : m
+            )
+          );
+        }
+      } finally {
+        processingRef.current = false;
+        setStreaming(false);
+        abortControllerRef.current = null;
+        // 刷新会话列表（后端可能自动生成了标题）
+        agentApi.listSessions().then((list) => {
+          setSessions(list || []);
+        }).catch(() => {});
+        // 处理队列中的下一条消息
+        if (messageQueueRef.current.length > 0) {
+          void processQueue();
+        }
+      }
+    },
+    [getPageContextJson, executeOneTool]
+  );
+
+  /** 发送消息（入队，串行处理） */
+  const sendMessage = useCallback(
+    async (text: string, images?: string[]) => {
+      const sessionKey = currentSessionKeyRef.current;
+      if (!sessionKey) return;
+      messageQueueRef.current.push({ text, images });
+      setQueueLength(messageQueueRef.current.length);
+      void processQueue();
+    },
+    [processQueue]
+  );
+
+  /** Task 2: 压缩上下文 */
+  const compactContext = useCallback(async () => {
+    const sessionKey = currentSessionKeyRef.current;
+    if (!sessionKey) return;
+    try {
+      await streamCompact(sessionKey, {
+        onDone: () => {
+          // Reload messages after compaction
+          if (sessionKey) {
+            agentApi.getMessages(sessionKey).then((msgs) => {
+              setMessages(convertMessages(msgs || []));
+            }).catch(() => {});
+          }
+        },
+        onError: (msg) => { console.error('Compact error:', msg); },
+      });
+    } catch (e) {
+      console.error('Compact failed:', e);
+    }
+  }, []);
+
+  /** Subagent debug flow: triggers a subagent SSE session for a node debug task */
+  const debugNode = useCallback(
+    async (nodeId: string, instruction: string) => {
+      const sessionKey = currentSessionKeyRef.current || `debug-${Date.now()}`;
+      const subagentSessionKey = `subagent-${sessionKey}-${nodeId}-${Date.now()}`;
+
+      const msgId = nanoid();
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: msgId,
+          role: 'tool',
+          content: '',
+          subagentSteps: [],
+          timestamp: Date.now(),
+        },
+      ]);
+
+      try {
+        await streamSubagent(subagentSessionKey, instruction, getPageContextJson(), {
+          onToken: () => {
+            // ignore streaming text for subagent
+          },
+          onSubagentToolCall: (data) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === msgId
+                  ? {
+                      ...m,
+                      subagentSteps: [
+                        ...(m.subagentSteps || []),
+                        {
+                          action: data.action,
+                          args: data.args,
+                          status: 'running' as const,
+                        },
+                      ],
+                    }
+                  : m
+              )
+            );
+          },
+          onSubagentRoundDone: () => {
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== msgId || !m.subagentSteps) return m;
+                const steps = [...m.subagentSteps];
+                // Mark last step as done
+                if (steps.length > 0) {
+                  steps[steps.length - 1] = {
+                    ...steps[steps.length - 1],
+                    status: 'done' as const,
+                  };
+                }
+                return { ...m, subagentSteps: steps };
+              })
+            );
+          },
+          onSubagentFinalResult: (data) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === msgId
+                  ? { ...m, subagentResult: { success: true, content: data.content } }
+                  : m
+              )
+            );
+          },
+          onSubagentDone: () => {},
+          onError: (msg) => {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === msgId
+                  ? { ...m, subagentResult: { success: false, content: msg } }
+                  : m
+              )
+            );
+          },
+        });
+      } catch (e) {
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === currentAssistantId
-              ? { ...m, content: m.content || `⚠️ ${(e as Error).message}` }
+            m.id === msgId
+              ? { ...m, subagentResult: { success: false, content: (e as Error).message } }
               : m
           )
         );
-      } finally {
-        setStreaming(false);
       }
     },
-    [streaming, getPageContextJson, executeOneTool]
+    [getPageContextJson]
   );
+
+  /** 停止流式输出并清空队列 */
+  const stopStreaming = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    messageQueueRef.current = [];
+    setQueueLength(0);
+    processingRef.current = false;
+    setStreaming(false);
+  }, []);
 
   const value: AgentContextValue = {
     dockOpen,
@@ -504,7 +865,12 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     messages,
     permissions,
     streaming,
+    queueLength,
     pendingConfirm,
+    tokenUsage,
+    compactContext,
+    debugEntries,
+    clearDebugEntries: () => setDebugEntries([]),
     setToolExecutor,
     resolveConfirm,
     createSession,
@@ -512,7 +878,10 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     renameSession,
     deleteSession,
     sendMessage,
+    stopStreaming,
     updatePermission,
+    updateGlobalPermission,
+    debugNode,
   };
 
   return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>;

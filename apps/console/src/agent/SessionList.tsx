@@ -6,6 +6,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { IconPlus, IconDelete } from '@douyinfe/semi-icons';
 
 import { useAgent } from './AgentContext';
+import { useLanguage, t } from '../i18n';
 
 const ACCENT = '#4d53e8';
 
@@ -22,6 +23,7 @@ export const SessionList: React.FC<SessionListProps> = ({ onClose }) => {
     deleteSession,
     renameSession,
   } = useAgent();
+  useLanguage();
 
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
@@ -110,7 +112,7 @@ export const SessionList: React.FC<SessionListProps> = ({ onClose }) => {
           flexShrink: 0,
         }}
       >
-        会话列表
+        {t('agent.sessionList')}
       </div>
 
       {/* 列表 */}
@@ -124,7 +126,7 @@ export const SessionList: React.FC<SessionListProps> = ({ onClose }) => {
               fontSize: '12px',
             }}
           >
-            暂无会话
+            {t('agent.noSession')}
           </div>
         ) : (
           sessions.map((s) => {
@@ -190,14 +192,14 @@ export const SessionList: React.FC<SessionListProps> = ({ onClose }) => {
                       fontWeight: isCurrent ? 600 : 400,
                     }}
                   >
-                    {s.title || '未命名会话'}
+                    {s.title || t('agent.unnamedSession')}
                   </span>
                 )}
                 {!isEditing && (
                   <button
                     className="del-btn"
                     onClick={(e) => handleDelete(e, s.sessionKey)}
-                    title="删除会话"
+                    title={t('agent.deleteSession')}
                     style={{
                       border: 'none',
                       background: 'transparent',
@@ -254,7 +256,7 @@ export const SessionList: React.FC<SessionListProps> = ({ onClose }) => {
           }}
         >
           <IconPlus size="small" />
-          新建对话
+          {t('agent.newSession')}
         </button>
       </div>
     </div>

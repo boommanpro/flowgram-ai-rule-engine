@@ -1,8 +1,9 @@
 /**
  * PermissionSettings - 权限设置弹窗组件
  * 按 4 类分组列出所有 action 的权限策略（always / confirm / forbid）
+ * 置顶快捷操作：一键全部开启、应用到所有新会话
  */
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { IconClose } from '@douyinfe/semi-icons';
 import { Radio, RadioGroup } from '@douyinfe/semi-ui';
 
@@ -61,23 +62,61 @@ const POLICY_OPTIONS: { value: PermissionPolicy; label: string; color: string }[
   { value: 'forbid', label: '禁止', color: '#e5404e' },
 ];
 
+/** 所有 action 名称列表 */
+const ALL_ACTION_NAMES = ACTION_GROUPS.flatMap((g) => g.actions.map((a) => a.name));
+
 interface PermissionSettingsProps {
   onClose?: () => void;
 }
 
 export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose }) => {
-  const { permissions, updatePermission } = useAgent();
+  const { permissions, updatePermission, updateGlobalPermission } = useAgent();
+  const [applyGlobal, setApplyGlobal] = useState(false);
+  const [batchLoading, setBatchLoading] = useState(false);
 
   const handleChange = useCallback(
-    (action: string, policy: PermissionPolicy) => {
-      void updatePermission(action, policy);
+    async (action: string, policy: PermissionPolicy) => {
+      await updatePermission(action, policy);
+      if (applyGlobal) {
+        await updateGlobalPermission(action, policy);
+      }
     },
-    [updatePermission]
+    [updatePermission, updateGlobalPermission, applyGlobal]
+  );
+
+  /** 一键全部设置为指定策略 */
+  const handleBatchSet = useCallback(
+    async (policy: PermissionPolicy) => {
+      setBatchLoading(true);
+      try {
+        for (const action of ALL_ACTION_NAMES) {
+          await updatePermission(action, policy);
+          if (applyGlobal) {
+            await updateGlobalPermission(action, policy);
+          }
+        }
+      } finally {
+        setBatchLoading(false);
+      }
+    },
+    [updatePermission, updateGlobalPermission, applyGlobal]
   );
 
   const handleClose = useCallback(() => {
     onClose?.();
   }, [onClose]);
+
+  /** 当前策略统计 */
+  const stats = useMemo(() => {
+    let always = 0, confirm = 0, forbid = 0;
+    for (const name of ALL_ACTION_NAMES) {
+      const p = permissions[name] || 'confirm';
+      if (p === 'always') always++;
+      else if (p === 'confirm') confirm++;
+      else if (p === 'forbid') forbid++;
+    }
+    return { always, confirm, forbid };
+  }, [permissions]);
 
   return (
     <div
@@ -95,7 +134,7 @@ export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose 
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: '360px',
+          width: '400px',
           height: '100%',
           background: '#fff',
           borderLeft: '1px solid #e8e8ea',
@@ -143,19 +182,98 @@ export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose 
           </button>
         </div>
 
-        {/* 内容区 */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
-          <div
+        {/* 置顶快捷操作区 */}
+        <div
+          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid #f0f0f0',
+            background: '#fafafa',
+            flexShrink: 0,
+          }}
+        >
+          {/* 应用到所有新会话 */}
+          <label
             style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
               fontSize: '12px',
-              color: '#999',
-              marginBottom: '14px',
-              lineHeight: '1.5',
+              color: '#333',
+              cursor: 'pointer',
+              marginBottom: '10px',
+              fontWeight: 500,
             }}
           >
-            为每类工具操作设置权限策略，控制 Agent 执行时是否需要确认。
+            <input
+              type="checkbox"
+              checked={applyGlobal}
+              onChange={(e) => setApplyGlobal(e.target.checked)}
+              style={{ cursor: 'pointer', width: '14px', height: '14px' }}
+            />
+            <span>应用到所有新会话（将当前权限作为全局默认值持久化）</span>
+          </label>
+
+          {/* 一键批量操作 */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span style={{ fontSize: '11px', color: '#999', flexShrink: 0 }}>快捷操作：</span>
+            <button
+              onClick={() => handleBatchSet('always')}
+              disabled={batchLoading}
+              style={{
+                padding: '4px 12px',
+                fontSize: '11px',
+                border: '1px solid #b7eb8f',
+                borderRadius: '4px',
+                background: '#f6ffed',
+                color: '#389e0d',
+                cursor: batchLoading ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              全部允许
+            </button>
+            <button
+              onClick={() => handleBatchSet('confirm')}
+              disabled={batchLoading}
+              style={{
+                padding: '4px 12px',
+                fontSize: '11px',
+                border: '1px solid #ffd591',
+                borderRadius: '4px',
+                background: '#fff7e6',
+                color: '#d46b08',
+                cursor: batchLoading ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              全部确认
+            </button>
+            <button
+              onClick={() => handleBatchSet('forbid')}
+              disabled={batchLoading}
+              style={{
+                padding: '4px 12px',
+                fontSize: '11px',
+                border: '1px solid #ffccc7',
+                borderRadius: '4px',
+                background: '#fff2f0',
+                color: '#cf1322',
+                cursor: batchLoading ? 'not-allowed' : 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              全部禁止
+            </button>
           </div>
 
+          {/* 统计 */}
+          <div style={{ marginTop: '8px', fontSize: '11px', color: '#aaa' }}>
+            当前：{stats.always} 允许 / {stats.confirm} 确认 / {stats.forbid} 禁止
+          </div>
+        </div>
+
+        {/* 内容区 */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
           {ACTION_GROUPS.map((group) => (
             <div key={group.title} style={{ marginBottom: '18px' }}>
               <div
