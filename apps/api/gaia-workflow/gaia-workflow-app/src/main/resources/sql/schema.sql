@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS agent_knowledge_chunk (
     embedding TEXT,
     source VARCHAR(128),
     metadata TEXT,
+    language VARCHAR(10) DEFAULT 'zh',
     created_at TEXT,
     updated_at TEXT,
     is_deleted TINYINT DEFAULT 0

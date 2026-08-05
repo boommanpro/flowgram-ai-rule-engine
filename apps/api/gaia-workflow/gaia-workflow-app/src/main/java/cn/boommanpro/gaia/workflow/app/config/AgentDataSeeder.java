@@ -39,8 +39,10 @@ public class AgentDataSeeder implements ApplicationRunner {
 
     private static final String SYSTEM_PROMPT_ZH_PATH = "agent/prompt-zh.md";
     private static final String SYSTEM_PROMPT_EN_PATH = "agent/prompt-en.md";
-    private static final String NODE_KNOWLEDGE_PATH = "seed/node-knowledge.json";
-    private static final String RAG_KNOWLEDGE_PATH = "seed/rag-knowledge.json";
+    private static final String NODE_KNOWLEDGE_ZH_PATH = "seed/node-knowledge.json";
+    private static final String NODE_KNOWLEDGE_EN_PATH = "seed/node-knowledge-en.json";
+    private static final String RAG_KNOWLEDGE_ZH_PATH = "seed/rag-knowledge.json";
+    private static final String RAG_KNOWLEDGE_EN_PATH = "seed/rag-knowledge-en.json";
     private static final String KNOWLEDGE_GRAPH_PATH = "seed/knowledge-graph.json";
 
     private final AgentConfigService configService;
@@ -168,7 +170,8 @@ public class AgentDataSeeder implements ApplicationRunner {
     }
 
     /**
-     * 灌入节点知识文档到 agent_config，configKey=node_{nodeType}，configType=node_knowledge
+     * 灌入节点知识文档到 agent_config
+     * 中文版 configKey=node_{nodeType}，英文版 configKey=node_{nodeType}.en
      *
      * @return 灌入条数（0 表示已存在跳过）
      */
@@ -179,12 +182,23 @@ public class AgentDataSeeder implements ApplicationRunner {
             log.debug("Node knowledge configs already exist ({}), skip.", existing);
             return 0;
         }
-        JSONArray array = readJsonArray(NODE_KNOWLEDGE_PATH);
+        String now = LocalDateTime.now().toString();
+        int count = 0;
+        count += seedNodeKnowledgeLang(NODE_KNOWLEDGE_ZH_PATH, false, now);
+        count += seedNodeKnowledgeLang(NODE_KNOWLEDGE_EN_PATH, true, now);
+        log.info("Seeded {} node knowledge configs", count);
+        return count;
+    }
+
+    /**
+     * 灌入单语言的节点知识，isEn=true 时 configKey 添加 .en 后缀
+     */
+    private int seedNodeKnowledgeLang(String path, boolean isEn, String now) {
+        JSONArray array = readJsonArray(path);
         if (array == null || array.isEmpty()) {
-            log.warn("Node knowledge seed file is empty: {}", NODE_KNOWLEDGE_PATH);
+            log.warn("Node knowledge seed file is empty: {}", path);
             return 0;
         }
-        String now = LocalDateTime.now().toString();
         int count = 0;
         for (int i = 0; i < array.size(); i++) {
             JSONObject item = array.getJSONObject(i);
@@ -194,24 +208,27 @@ public class AgentDataSeeder implements ApplicationRunner {
             if (nodeType == null || nodeType.isEmpty()) {
                 continue;
             }
-            String configKey = "node_" + nodeType;
+            String configKey = "node_" + nodeType + (isEn ? ".en" : "");
             AgentConfig config = new AgentConfig();
             config.setConfigKey(configKey);
             config.setConfigType(NODE_KNOWLEDGE_TYPE);
             config.setTitle(title);
             config.setContent(content);
-            config.setDescription("Flowgram 节点知识文档: " + nodeType);
+            config.setDescription(isEn
+                    ? "Flowgram node knowledge: " + nodeType
+                    : "Flowgram 节点知识文档: " + nodeType);
             config.setCreatedAt(now);
             config.setUpdatedAt(now);
             configService.save(config);
             count++;
         }
-        log.info("Seeded {} node knowledge configs", count);
+        log.info("Seeded {} {} node knowledge configs", count, isEn ? "en-US" : "zh-CN");
         return count;
     }
 
     /**
      * 灌入 RAG 知识库到 agent_knowledge_chunk，embedding=null（降级为关键词匹配）
+     * 同时灌入中英文两个版本，language 字段区分语言
      *
      * @return 灌入条数（0 表示已存在跳过）
      */
@@ -221,12 +238,23 @@ public class AgentDataSeeder implements ApplicationRunner {
             log.debug("RAG knowledge chunks already exist ({}), skip.", existing);
             return 0;
         }
-        JSONArray array = readJsonArray(RAG_KNOWLEDGE_PATH);
+        String now = LocalDateTime.now().toString();
+        int count = 0;
+        count += seedRagKnowledgeLang(RAG_KNOWLEDGE_ZH_PATH, "zh", now);
+        count += seedRagKnowledgeLang(RAG_KNOWLEDGE_EN_PATH, "en", now);
+        log.info("Seeded {} RAG knowledge chunks", count);
+        return count;
+    }
+
+    /**
+     * 灌入单语言的 RAG 知识库
+     */
+    private int seedRagKnowledgeLang(String path, String lang, String now) {
+        JSONArray array = readJsonArray(path);
         if (array == null || array.isEmpty()) {
-            log.warn("RAG knowledge seed file is empty: {}", RAG_KNOWLEDGE_PATH);
+            log.warn("RAG knowledge seed file is empty: {}", path);
             return 0;
         }
-        String now = LocalDateTime.now().toString();
         int count = 0;
         for (int i = 0; i < array.size(); i++) {
             JSONObject item = array.getJSONObject(i);
@@ -241,12 +269,13 @@ public class AgentDataSeeder implements ApplicationRunner {
             chunk.setEmbedding(null);
             chunk.setSource(item.getStr("source", "seed"));
             chunk.setMetadata(null);
+            chunk.setLanguage(lang);
             chunk.setCreatedAt(now);
             chunk.setUpdatedAt(now);
             knowledgeChunkService.save(chunk);
             count++;
         }
-        log.info("Seeded {} RAG knowledge chunks", count);
+        log.info("Seeded {} {} RAG knowledge chunks", count, lang);
         return count;
     }
 

@@ -1,0 +1,97 @@
+[
+  {
+    "nodeType": "start",
+    "title": "Start Node (Entry Node)",
+    "content": "The Start node is the entry point of a workflow. Every workflow must have exactly one Start node.\n\n## Purpose\n- Marks the execution starting point of the workflow\n- Receives initial input parameters passed from outside\n- Serves as the first step of flow orchestration\n\n## Parameters\n- inputs: Declares the input parameter schema of the workflow (variable name, type, default value)\n- These parameters can be referenced by subsequent nodes via variables, e.g. ${start.input.xxx}\n\n## Configuration\nDefine the input parameter list in the Start node. Each parameter includes fields such as name, type, required, and default. Subsequent nodes access these parameters through variable reference syntax.\n\n## Notes\n- A workflow allows only one Start node\n- The Start node cannot have incoming edges, only outgoing edges\n- Input parameter names should avoid conflicts with system reserved words"
+  },
+  {
+    "nodeType": "end",
+    "title": "End Node (Terminal Node)",
+    "content": "The End node marks the execution terminal point of a workflow and is used to output the final result.\n\n## Purpose\n- Terminates workflow execution\n- Returns the final output of the workflow\n- A workflow can have multiple End nodes (in conditional branch scenarios)\n\n## Parameters\n- outputs: Declares output fields and their value expressions\n- Output values can be assembled via variable references, e.g. ${llm_1.result} or ${http_1.response.body}\n\n## Configuration\nConfigure the outputs list in the End node. Each output item contains a name and a value expression. When execution reaches the End node, the workflow stops and returns the outputs as the final result.\n\n## Notes\n- The End node can only have incoming edges, no outgoing edges\n- At least one End node is required to form a complete workflow"
+  },
+  {
+    "nodeType": "llm",
+    "title": "LLM Node (Large Model Invocation)",
+    "content": "The LLM node is used to invoke a Large Language Model (LLM) to perform tasks such as text generation, conversation, and reasoning.\n\n## Purpose\n- Calls the LLM API to generate text\n- Completes NLP tasks such as Q&A, summarization, translation, and classification\n- Acts as the intelligent reasoning core of an Agent workflow\n\n## Parameters\n- model: Model name (e.g. qwen/qwen3-4b-2507)\n- apiHost: LLM service address\n- apiKey: API key\n- temperature: Sampling temperature (0.0-2.0; higher means more random)\n- systemPrompt: System prompt\n- userPrompt: User prompt, supports variable references\n- maxTokens: Maximum number of tokens to generate\n\n## Configuration\nFill in the model parameters and prompt template in the LLM node. The prompt can use ${node_id.field} to reference outputs of upstream nodes. After execution, the LLM node outputs result (the generated text) and usage (token usage).\n\n## Notes\n- Ensure the LLM service is reachable\n- Variable references in the prompt must be resolvable at runtime\n- An excessively high temperature may cause unstable output"
+  },
+  {
+    "nodeType": "http",
+    "title": "HTTP Node (HTTP Request)",
+    "content": "The HTTP node is used to initiate HTTP/HTTPS requests and integrate external APIs or services.\n\n## Purpose\n- Calls RESTful APIs\n- Fetches external data\n- Triggers external system operations\n\n## Parameters\n- method: HTTP method (GET/POST/PUT/DELETE/PATCH)\n- url: Request URL, supports variable references\n- headers: Request header key-value pairs\n- params: URL query parameters\n- body: Request body (used by POST/PUT)\n- timeout: Request timeout (milliseconds)\n\n## Configuration\nConfigure method, url, headers, params, and body in the HTTP node. All fields support variable references, e.g. the url can be https://api.example.com/${start.input.id}. After execution, it outputs status (status code), response (response body), and headers (response headers).\n\n## Notes\n- Set a reasonable timeout to prevent long blocking\n- Sensitive information (such as API Key) is recommended to be placed in headers\n- Return values need to be parsed as JSON or text"
+  },
+  {
+    "nodeType": "code",
+    "title": "Code Node (Code Execution)",
+    "content": "The Code node is used to execute custom code logic and supports multiple script engines such as Java, Groovy, and JavaScript.\n\n## Purpose\n- Implements complex business logic\n- Data transformation and processing\n- Algorithm computation\n\n## Parameters\n- language: Script language (java/groovy/javascript)\n- code: Code content\n- inputs: Input parameter list (variable name + reference expression)\n- outputs: Output parameter list (variable name + type)\n\n## Configuration\nWrite code in the Code node, receive upstream variables via inputs, and declare return values via outputs. The Java/Groovy engine dynamically compiles and executes the code. After execution, each output field is produced.\n\n## Notes\n- Java code must conform to dynamic compilation specifications\n- Pay attention to code security and avoid executing untrusted code\n- Complex logic is recommended to be split into multiple nodes for easier debugging"
+  },
+  {
+    "nodeType": "condition",
+    "title": "Condition Node (Single-Condition Branch)",
+    "content": "The Condition node is used to branch the flow based on a single condition evaluation.\n\n## Purpose\n- Selects an execution path based on a condition\n- Implements if-else logic\n\n## Parameters\n- condition: A condition expression containing left (left operand), operator, and right (right operand)\n- operator supports: equal, not_equal, greater_than, less_than, greater_than_or_equal, less_than_or_equal, contains, not_contains, is_empty, is_not_empty, is_true, is_false\n\n## Configuration\nConfigure a condition expression. The node routes to the true branch or the false branch based on whether the condition holds. left/right support variable references.\n\n## Notes\n- A Condition node has only two outgoing edges (true/false)\n- For multi-condition scenarios, use the multi-condition or branches node\n- Pay attention to type matching (comparing strings with numbers)"
+  },
+  {
+    "nodeType": "multi-condition",
+    "title": "Multi-Condition Node (Multi-Condition Branch)",
+    "content": "The Multi-Condition node is used to branch the flow based on multiple conditions, supporting complex combined judgment logic.\n\n## Purpose\n- Implements multi-way branching (switch-case semantics)\n- Combines multiple condition judgments\n- Nested condition logic\n\n## Parameters\n- conditions: A list of conditions, where each condition contains multiple sub-conditions (combined with AND/OR)\n- Each branch can configure an independent outgoing edge\n- A default branch can be set (taken when none of the conditions are satisfied)\n\n## Configuration\nConfigure multiple branch conditions. Each branch is composed of several sub-conditions combined with AND/OR. Conditions are matched in order during execution; once the first satisfied branch is hit, the node exits.\n\n## Notes\n- Branch order matters; earlier branches are matched first\n- It is recommended to set a default branch as a fallback\n- Variable references in condition expressions must resolve correctly"
+  },
+  {
+    "nodeType": "loop",
+    "title": "Loop Node (Loop)",
+    "content": "The Loop node is used to repeatedly execute a sub-flow, supporting modes such as fixed-count, list iteration, and conditional looping.\n\n## Purpose\n- Batch processing of list data\n- Repeatedly executes a task until a condition is met\n- Implements for/while loop semantics\n\n## Parameters\n- loopType: Loop type (count/forEach/while)\n- count: Upper limit for fixed-count loops\n- iterateOver: The list variable to iterate over\n- condition: Termination condition for while loops\n- Sub-flow: The node chain inside the loop node\n\n## Configuration\nConfigure the loop type and parameters, and orchestrate the sub-flow inside the loop node. Each iteration can access the current element (forEach) or a counter (count). It can be combined with break/continue nodes to control the loop flow.\n\n## Notes\n- Avoid infinite loops; the while mode must ensure the condition is eventually unmet\n- Pay attention to variable scope within the sub-flow\n- Pay attention to performance when iterating over large lists"
+  },
+  {
+    "nodeType": "branches",
+    "title": "Branches Node (Multi-Way Branch)",
+    "content": "The Branches node is used to implement multi-way parallel or mutually exclusive branches, similar to a switch-case structure.\n\n## Purpose\n- Mutually exclusive branching based on multiple conditions\n- Parallel execution of multiple sub-flows\n- Complex routing logic\n\n## Parameters\n- branches: A list of branches, where each branch contains a condition and a sub-flow\n- A default branch can be configured\n\n## Configuration\nConfigure multiple branches, each with its own condition and sub-flow. During execution, conditions are matched in order; once a condition is hit, the corresponding sub-flow is executed. It can be combined with the Condition node to implement more complex logic.\n\n## Notes\n- Branches are matched in order; earlier ones take priority\n- It is recommended to set a default branch as a fallback\n- Different from multi-condition: branches supports an independent sub-flow for each branch"
+  },
+  {
+    "nodeType": "assignee",
+    "title": "Assignee Node (Manual Approval / Task Assignment)",
+    "content": "The Assignee node is used to insert a manual task node into a workflow, assigning a task to a specified person for handling.\n\n## Purpose\n- Manual approval\n- Task assignment and claim\n- Manual data entry\n\n## Parameters\n- assignee: Handler (user ID / username)\n- taskName: Task name\n- taskDesc: Task description\n- form: Schema of form fields to be filled in manually\n- timeout: Task timeout\n\n## Configuration\nConfigure the handler and the form. When the workflow reaches this node, it pauses and waits for manual handling. After completion, the form data serves as the node output and the workflow continues execution.\n\n## Notes\n- Integration with an external task system is required\n- Pay attention to timeout handling strategy\n- Form field design should be concise and clear"
+  },
+  {
+    "nodeType": "variable",
+    "title": "Variable Node (Variable Assignment)",
+    "content": "The Variable node is used to declare, assign, or modify variables within a workflow.\n\n## Purpose\n- Declares intermediate variables\n- Modifies the value of existing variables\n- Data format conversion and relay\n\n## Parameters\n- variables: A list of variables, each item containing name, type, and value\n- value supports variable references and expressions\n\n## Configuration\nConfigure the list of variables to assign. Each variable can reference the output of upstream nodes. After execution, these variables can be accessed in subsequent nodes via ${node_id.var_name}.\n\n## Notes\n- Variable names must conform to naming conventions\n- Pay attention to variable scope (node-level vs workflow-level)\n- When referencing upstream variables, ensure the upstream has already executed"
+  },
+  {
+    "nodeType": "string-format",
+    "title": "String-Format Node (String Formatting)",
+    "content": "The String-Format node is used to generate strings based on templates and supports template engines such as Thymeleaf.\n\n## Purpose\n- Template rendering (emails, reports, prompt assembly)\n- String concatenation\n- Combined output of multiple variables\n\n## Parameters\n- template: Template string containing variable placeholders\n- engine: Template engine (thymeleaf/plain)\n- inputs: Variable binding list\n\n## Configuration\nUse placeholders in the template (e.g. ${var} or [[${var}]]) and bind variable values via inputs. After execution, the formatted field is output as the rendered string.\n\n## Notes\n- The template syntax must match the selected engine\n- Pay attention to special character escaping\n- Complex templates are recommended to be split into multiple nodes"
+  },
+  {
+    "nodeType": "block-start",
+    "title": "Block-Start Node (Block Start)",
+    "content": "The Block-Start node marks the beginning of a logical block and is used in pair with a Block-End node.\n\n## Purpose\n- Defines code block / logical block boundaries\n- Works with the Loop node to delimit the loop body\n- Works with condition nodes to delimit condition blocks\n\n## Parameters\n- blockId: Block identifier\n- Associated with Block-End via blockId\n\n## Configuration\nBlock-Start and Block-End must appear in pairs and are associated via blockId. The nodes within the block form an execution unit.\n\n## Notes\n- A Block-Start must have a corresponding Block-End\n- The block cannot span Loop/Condition boundaries\n- Nested blocks must ensure blockId uniqueness"
+  },
+  {
+    "nodeType": "block-end",
+    "title": "Block-End Node (Block End)",
+    "content": "The Block-End node marks the end of a logical block and is used in pair with a Block-Start node.\n\n## Purpose\n- Defines code block / logical block boundaries\n- Marks the end of block execution\n\n## Parameters\n- blockId: Block identifier (consistent with the corresponding Block-Start)\n\n## Configuration\nAssociated with Block-Start via blockId. The nodes between the two form a complete logical block.\n\n## Notes\n- Must have a corresponding Block-Start\n- The blockId must be consistent with Block-Start\n- Cannot be used standalone"
+  },
+  {
+    "nodeType": "break",
+    "title": "Break Node (Break Out of Loop)",
+    "content": "The Break node is used to break out of a loop early and terminate the current loop.\n\n## Purpose\n- Ends the loop early when a condition is met\n- Interrupts the loop under exceptional circumstances\n\n## Parameters\n- No special parameters; execution breaks out of the nearest Loop\n\n## Configuration\nThe Break node is typically used together with a Condition node to break out of the loop when a specific condition is met.\n\n## Notes\n- Can only be used inside a Loop\n- Breaks out of the nearest Loop node\n- In nested loops, only the innermost loop is broken out of"
+  },
+  {
+    "nodeType": "continue",
+    "title": "Continue Node (Skip Current Iteration)",
+    "content": "The Continue node is used to skip the current loop iteration and proceed directly to the next iteration.\n\n## Purpose\n- Skips the remaining logic of the current iteration\n- Moves to the next iteration early\n\n## Parameters\n- No special parameters; execution skips the current iteration\n\n## Configuration\nThe Continue node is typically used together with a Condition node to skip the current iteration when a specific condition is met.\n\n## Notes\n- Can only be used inside a Loop\n- Skips the current iteration of the nearest Loop\n- The loop termination condition is still evaluated"
+  },
+  {
+    "nodeType": "comment",
+    "title": "Comment Node (Annotation)",
+    "content": "The Comment node is used to add annotation notes on the workflow canvas and does not participate in execution.\n\n## Purpose\n- Annotates workflow design intent\n- Records business notes\n- Facilitates team collaboration\n\n## Parameters\n- content: Comment content\n\n## Configuration\nPlace a Comment node on the canvas and fill in the comment content. The Comment node does not participate in workflow execution and is for documentation only.\n\n## Notes\n- Does not affect workflow execution\n- Is not scheduled by the runtime\n- It is recommended to add comments at key nodes"
+  },
+  {
+    "nodeType": "group",
+    "title": "Group Node (Node Grouping)",
+    "content": "The Group node is used to organize multiple related nodes into a visual group for easier canvas management.\n\n## Purpose\n- Visually aggregates related nodes\n- Sub-flow encapsulation\n- Canvas organization and navigation\n\n## Parameters\n- name: Group name\n- color: Group color\n- Child nodes: Nodes contained within the group\n\n## Configuration\nCreate a Group node on the canvas and drag related nodes into the group. The Group does not affect execution logic and is for visual organization only.\n\n## Notes\n- Does not affect workflow execution logic\n- Child nodes still execute according to their original connections\n- Can be nested"
+  },
+  {
+    "nodeType": "workflow",
+    "title": "Workflow Node (Sub-Workflow Invocation)",
+    "content": "The Workflow node is used to invoke another pre-defined workflow, enabling workflow reuse and nesting.\n\n## Purpose\n- Reuses existing workflows\n- Nested workflow invocation\n- Modular orchestration\n\n## Parameters\n- workflowCode: The code of the sub-workflow to invoke\n- version: Sub-workflow version\n- inputs: Input parameters passed to the sub-workflow\n- outputs: Output fields returned by the sub-workflow\n\n## Configuration\nConfigure workflowCode and inputs. At execution time, the sub-workflow is launched and the node waits for it to complete. The output of the sub-workflow serves as the output of this node.\n\n## Notes\n- Avoid circular references that lead to infinite loops\n- Exceptions in the sub-workflow affect the parent workflow\n- Pay attention to input/output parameter matching"
+  }
+]

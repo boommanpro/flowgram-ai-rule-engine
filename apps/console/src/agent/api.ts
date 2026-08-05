@@ -80,8 +80,8 @@ export const agentApi = {
     request<any>('/agent/knowledge/save', { method: 'POST', body: JSON.stringify(chunk) }),
   deleteKnowledge: (id: number) =>
     request<boolean>(`/agent/knowledge/${id}`, { method: 'DELETE' }),
-  searchKnowledge: (query: string, topK?: number) =>
-    request<any[]>('/agent/knowledge/search', { method: 'POST', body: JSON.stringify({ query, topK: topK || 5 }) }),
+  searchKnowledge: (query: string, topK?: number, lang?: string) =>
+    request<any[]>('/agent/knowledge/search', { method: 'POST', body: JSON.stringify({ query, topK: topK || 5, lang }) }),
   reembedAll: () =>
     request<any>('/agent/knowledge/reembed-all', { method: 'POST' }),
 

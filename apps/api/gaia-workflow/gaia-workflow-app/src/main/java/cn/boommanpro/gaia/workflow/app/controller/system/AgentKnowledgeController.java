@@ -99,11 +99,16 @@ public class AgentKnowledgeController {
     public List<AgentKnowledgeChunk> search(@RequestBody JSONObject body) {
         String query = body.getStr("query");
         int topK = body.getInt("topK", 5);
+        String lang = body.getStr("lang");
 
         double[] queryVec = embeddingService.embed(query);
         if (queryVec != null) {
-            List<AgentKnowledgeChunk> all = chunkService.list(
-                new QueryWrapper<AgentKnowledgeChunk>().isNotNull("embedding"));
+            QueryWrapper<AgentKnowledgeChunk> vecWrapper = new QueryWrapper<>();
+            if (lang != null && !lang.isEmpty()) {
+                vecWrapper.eq("language", lang);
+            }
+            vecWrapper.isNotNull("embedding");
+            List<AgentKnowledgeChunk> all = chunkService.list(vecWrapper);
             return all.stream()
                 .map(c -> new AbstractMap.SimpleEntry<AgentKnowledgeChunk, Double>(
                     c, cosineSimilarity(queryVec, embeddingService.jsonToEmbedding(c.getEmbedding()))))
@@ -114,10 +119,13 @@ public class AgentKnowledgeController {
                 .collect(Collectors.toList());
         }
 
-        return chunkService.list(
-            new QueryWrapper<AgentKnowledgeChunk>()
-                .like("title", query).or().like("content", query)
-                .last("LIMIT " + topK));
+        QueryWrapper<AgentKnowledgeChunk> kwWrapper = new QueryWrapper<>();
+        if (lang != null && !lang.isEmpty()) {
+            kwWrapper.eq("language", lang);
+        }
+        kwWrapper.and(w -> w.like("title", query).or().like("content", query))
+            .last("LIMIT " + topK);
+        return chunkService.list(kwWrapper);
     }
 
     /**

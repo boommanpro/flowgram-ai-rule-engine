@@ -22,7 +22,8 @@ public class SchemaMigrationInitializer implements CommandLineRunner {
     // column: table, column name, column type
     private static final List<String[]> MIGRATIONS = Arrays.asList(
         new String[]{"agent_message", "images", "TEXT"},
-        new String[]{"agent_message", "parent_message_id", "VARCHAR(64)"}
+        new String[]{"agent_message", "parent_message_id", "VARCHAR(64)"},
+        new String[]{"agent_knowledge_chunk", "language", "VARCHAR(10) DEFAULT 'zh'"}
     );
 
     private final DataSource dataSource;

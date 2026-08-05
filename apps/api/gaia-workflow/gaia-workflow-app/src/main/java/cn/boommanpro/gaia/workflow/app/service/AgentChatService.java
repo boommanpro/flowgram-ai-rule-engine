@@ -340,7 +340,7 @@ public class AgentChatService {
 
         // === 4. 加载 RAG 知识库 ===
         long ragStart = System.currentTimeMillis();
-        String ragContext = buildRagContext(history);
+        String ragContext = buildRagContext(history, loc);
         long ragMs = System.currentTimeMillis() - ragStart;
         int ragChunks = 0;
         if (ragContext != null) {
@@ -520,15 +520,15 @@ public class AgentChatService {
     }
 
     /**
-     * 构建 RAG 知识库参考上下文
+     * 构建 RAG 知识库参考上下文（按 locale 过滤语言版本）
      */
-    private String buildRagContext(List<JSONObject> history) {
+    private String buildRagContext(List<JSONObject> history, String locale) {
         String userText = extractLastUserText(history);
         if (userText == null || userText.isEmpty()) {
             return null;
         }
 
-        List<AgentKnowledgeChunk> chunks = searchChunks(userText);
+        List<AgentKnowledgeChunk> chunks = searchChunks(userText, locale);
         if (chunks == null || chunks.isEmpty()) {
             return null;
         }
@@ -546,11 +546,14 @@ public class AgentChatService {
     /**
      * 知识库分块检索：优先向量余弦相似度，embedding 不可用时退化为关键词 LIKE
      */
-    private List<AgentKnowledgeChunk> searchChunks(String userText) {
+    private List<AgentKnowledgeChunk> searchChunks(String userText, String locale) {
+        String lang = "zh-CN".equals(locale) ? "zh" : "en";
         double[] userEmbedding = embeddingService.embed(userText);
         if (userEmbedding != null) {
             List<AgentKnowledgeChunk> allChunks = knowledgeChunkService.list(
-                new QueryWrapper<AgentKnowledgeChunk>().isNotNull("embedding"));
+                new QueryWrapper<AgentKnowledgeChunk>()
+                    .isNotNull("embedding")
+                    .eq("language", lang));
             List<AbstractMap.Entry<Double, AgentKnowledgeChunk>> pairs = new ArrayList<>();
             for (AgentKnowledgeChunk chunk : allChunks) {
                 double[] chunkEmb = embeddingService.jsonToEmbedding(chunk.getEmbedding());
@@ -570,7 +573,7 @@ public class AgentChatService {
             // 向量检索无结果时也降级为关键词
         }
         // embedding 不可用：关键词 LIKE 兜底（分词后 OR 匹配，提高召回率）
-        List<AgentKnowledgeChunk> keywordResults = searchByKeywords(userText);
+        List<AgentKnowledgeChunk> keywordResults = searchByKeywords(userText, lang);
         if (userEmbedding == null) {
             log.debug("RAG keyword fallback (embedding unavailable): {} chunks", keywordResults.size());
         } else {
@@ -582,7 +585,7 @@ public class AgentChatService {
     /**
      * 分词后按关键词 OR LIKE 检索知识库分块
      */
-    private List<AgentKnowledgeChunk> searchByKeywords(String userText) {
+    private List<AgentKnowledgeChunk> searchByKeywords(String userText, String lang) {
         // 按空格和标点分词，保留长度 >=2 的词
         String[] keywords = userText.split("[\\s,，。.;；、？?！!\\n\\r]+");
         List<String> validKeywords = new ArrayList<>();
@@ -601,7 +604,9 @@ public class AgentChatService {
         for (String kw : validKeywords) {
             if (results.size() >= 3) break;
             List<AgentKnowledgeChunk> hits = knowledgeChunkService.list(
-                new QueryWrapper<AgentKnowledgeChunk>().like("content", kw).last("LIMIT 5"));
+                new QueryWrapper<AgentKnowledgeChunk>()
+                    .eq("language", lang)
+                    .like("content", kw).last("LIMIT 5"));
             for (AgentKnowledgeChunk hit : hits) {
                 boolean exists = false;
                 for (AgentKnowledgeChunk existing : results) {

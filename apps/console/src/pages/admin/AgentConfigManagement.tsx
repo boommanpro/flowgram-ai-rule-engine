@@ -750,11 +750,13 @@ interface KnowledgeItem {
   source?: string;
   metadata?: any;
   embedding?: string;
+  language?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 const RagKnowledgeTab: React.FC = () => {
+  const lang = useLanguage();
   const [loading, setLoading] = useState(false);
   const [list, setList] = useState<KnowledgeItem[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -783,9 +785,15 @@ const RagKnowledgeTab: React.FC = () => {
     void load();
   }, [load]);
 
+  // 按当前系统语言过滤 RAG 知识库
+  const filteredList = useMemo(() => {
+    const langCode = lang === 'en' ? 'en' : 'zh';
+    return list.filter((item) => (item.language || 'zh') === langCode);
+  }, [list, lang]);
+
   const openCreate = () => {
     setEditing(null);
-    setForm({ title: '', content: '', source: '', metadata: '{}' });
+    setForm({ title: '', content: '', source: '', metadata: '{}', language: lang === 'en' ? 'en' : 'zh' });
     setModalVisible(true);
   };
 
@@ -860,14 +868,14 @@ const RagKnowledgeTab: React.FC = () => {
     setSearching(true);
     setSearchResults([]);
     try {
-      const data = await agentApi.searchKnowledge(searchQuery);
+      const data = await agentApi.searchKnowledge(searchQuery, 5, lang === 'en' ? 'en' : 'zh');
       setSearchResults(data || []);
     } catch (e) {
       Toast.error(`检索失败: ${(e as Error).message}`);
     } finally {
       setSearching(false);
     }
-  }, [searchQuery]);
+  }, [searchQuery, lang]);
 
   const columns: ColumnProps<KnowledgeItem>[] = [
     { title: '标题', dataIndex: 'title', key: 'title', width: 220 },
@@ -910,7 +918,7 @@ const RagKnowledgeTab: React.FC = () => {
 
       <Table
         columns={columns}
-        dataSource={list}
+        dataSource={filteredList}
         rowKey="id"
         loading={loading}
         pagination={{ pageSize: 10 }}
@@ -1779,7 +1787,7 @@ const SidebarGroup: React.FC<{
 };
 
 const PromptEditorTab: React.FC = () => {
-  useLanguage();
+  const lang = useLanguage();
   const [loading, setLoading] = useState(false);
   const [promptList, setPromptList] = useState<ConfigItem[]>([]);
   const [knowledgeList, setKnowledgeList] = useState<ConfigItem[]>([]);
@@ -1812,20 +1820,51 @@ const PromptEditorTab: React.FC = () => {
     void load();
   }, [load]);
 
-  // 列表加载完成后，自动选中第一个项目
+  // 按当前系统语言过滤：en 显示 .en 后缀的条目，zh 显示无后缀的条目
+  const filteredPrompts = useMemo(() => {
+    return promptList.filter((item) =>
+      lang === 'en' ? item.configKey?.endsWith('.en') : !item.configKey?.endsWith('.en')
+    );
+  }, [promptList, lang]);
+
+  const filteredKnowledge = useMemo(() => {
+    return knowledgeList.filter((item) =>
+      lang === 'en' ? item.configKey?.endsWith('.en') : !item.configKey?.endsWith('.en')
+    );
+  }, [knowledgeList, lang]);
+
+  // 语言切换时，如果当前选中的条目不属于当前语言，自动选中第一个匹配条目
   useEffect(() => {
-    if (!selectedKey && (promptList.length > 0 || knowledgeList.length > 0)) {
-      const first = promptList[0] || knowledgeList[0];
+    const allFiltered = [...filteredPrompts, ...filteredKnowledge];
+    if (allFiltered.length === 0) {
+      setSelectedKey('');
+      setEditContent('');
+      return;
+    }
+    const currentBelongsToLang = allFiltered.some((item) => item.configKey === selectedKey);
+    if (!currentBelongsToLang) {
+      const first = filteredPrompts[0] || filteredKnowledge[0];
       if (first) {
         setSelectedKey(first.configKey);
         setEditContent(first.content || '');
       }
     }
-  }, [selectedKey, promptList, knowledgeList]);
+  }, [lang, filteredPrompts, filteredKnowledge, selectedKey]);
+
+  // 列表加载完成后，自动选中第一个项目
+  useEffect(() => {
+    if (!selectedKey && (filteredPrompts.length > 0 || filteredKnowledge.length > 0)) {
+      const first = filteredPrompts[0] || filteredKnowledge[0];
+      if (first) {
+        setSelectedKey(first.configKey);
+        setEditContent(first.content || '');
+      }
+    }
+  }, [selectedKey, filteredPrompts, filteredKnowledge]);
 
   const selectedItem = useMemo(() => {
-    return [...promptList, ...knowledgeList].find((item) => item.configKey === selectedKey);
-  }, [promptList, knowledgeList, selectedKey]);
+    return [...filteredPrompts, ...filteredKnowledge].find((item) => item.configKey === selectedKey);
+  }, [filteredPrompts, filteredKnowledge, selectedKey]);
 
   const handleSelect = useCallback((item: ConfigItem) => {
     setSelectedKey(item.configKey);
@@ -1998,7 +2037,7 @@ const PromptEditorTab: React.FC = () => {
           >
             <SidebarGroup
               title={t('agent.config.promptGroup')}
-              items={promptList}
+              items={filteredPrompts}
               selectedKey={selectedKey}
               onSelect={handleSelect}
               onCreate={() => openCreate('system_prompt')}
@@ -2007,7 +2046,7 @@ const PromptEditorTab: React.FC = () => {
             />
             <SidebarGroup
               title={t('agent.config.knowledgeGroup')}
-              items={knowledgeList}
+              items={filteredKnowledge}
               selectedKey={selectedKey}
               onSelect={handleSelect}
               onCreate={() => openCreate('node_knowledge')}
@@ -2045,45 +2084,17 @@ const PromptEditorTab: React.FC = () => {
                   {selectedItem.configType}
                 </Tag>
               )}
-              {/* 语言标识 + 切换按钮（仅对系统提示词显示） */}
-              {selectedItem?.configType === 'system_prompt' && (
-                <>
-                  <span
-                    style={{
-                      marginLeft: 'auto',
-                      fontSize: 12,
-                      color: '#888',
-                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                    }}
-                  >
-                    {selectedItem.configKey?.endsWith('.en') ? 'en-US' : 'zh-CN'}
-                  </span>
-                  <Button
-                    size="small"
-                    theme="borderless"
-                    style={{ color: '#888', fontSize: 12 }}
-                    onClick={() => {
-                      const isEn = selectedItem.configKey?.endsWith('.en');
-                      const targetKey = isEn
-                        ? selectedItem.configKey!.replace(/\.en$/, '')
-                        : selectedItem.configKey! + '.en';
-                      const target = [...promptList, ...knowledgeList].find(
-                        (item) => item.configKey === targetKey
-                      );
-                      if (target) {
-                        handleSelect(target);
-                      } else {
-                        Toast.info(isEn ? '中文版本不存在' : '英文版本不存在');
-                      }
-                    }}
-                  >
-                    {selectedItem.configKey?.endsWith('.en') ? '切换到中文' : '切换到英文'}
-                  </Button>
-                </>
-              )}
-              {selectedItem?.configType !== 'system_prompt' && (
-                <span style={{ marginLeft: 'auto' }} />
-              )}
+              {/* 语言标识（跟随系统语言，无需手动切换） */}
+              <span
+                style={{
+                  marginLeft: 'auto',
+                  fontSize: 12,
+                  color: '#888',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                }}
+              >
+                {lang === 'en' ? 'en-US' : 'zh-CN'}
+              </span>
               <Button
                 theme="solid"
                 size="small"

@@ -387,6 +387,16 @@ export const enUS: I18nLanguage = {
     'agent.debugSystemPrompt': 'System Prompt',
     'agent.debugTotalMessages': 'Total Messages',
     'agent.debugSession': 'Session',
+    'agent.debugRaw': 'Raw',
+    'agent.debugRawTitle': 'Raw Request & Response',
+    'agent.debugRawRequest': 'Raw Request (Full LLM Payload)',
+    'agent.debugRawResponse': 'Raw Response (Full LLM Response)',
+    'agent.debugRawMessages': 'Messages (Full, Untruncated)',
+    'agent.debugRawTools': 'Tools Schema (Full)',
+    'agent.debugRawCopy': 'Copy JSON',
+    'agent.debugRawClose': 'Close',
+    'agent.debugRawWrap': 'Wrap',
+    'agent.debugRawNoWrap': 'No Wrap',
 
     /* ---------- Agent Config Management ---------- */
     'agent.config.title': 'Agent Configuration',

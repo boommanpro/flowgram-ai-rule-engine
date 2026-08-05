@@ -28,6 +28,9 @@ public class AgentKnowledgeChunk {
     @TableField("metadata")
     private String metadata;
 
+    @TableField("language")
+    private String language;
+
     @TableField("created_at")
     private String createdAt;
 

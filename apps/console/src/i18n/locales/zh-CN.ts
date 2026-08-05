@@ -387,6 +387,16 @@ export const zhCN: I18nLanguage = {
     'agent.debugSystemPrompt': '系统提示',
     'agent.debugTotalMessages': '总消息',
     'agent.debugSession': '会话',
+    'agent.debugRaw': '原始数据',
+    'agent.debugRawTitle': '原始请求与响应',
+    'agent.debugRawRequest': '原始请求（完整 LLM 请求体）',
+    'agent.debugRawResponse': '原始响应（完整 LLM 响应）',
+    'agent.debugRawMessages': '消息列表（完整，未截断）',
+    'agent.debugRawTools': '工具 Schema（完整）',
+    'agent.debugRawCopy': '复制 JSON',
+    'agent.debugRawClose': '关闭',
+    'agent.debugRawWrap': '自动换行',
+    'agent.debugRawNoWrap': '不换行',
 
     /* ---------- Agent Config Management ---------- */
     'agent.config.title': 'Agent 配置中心',
