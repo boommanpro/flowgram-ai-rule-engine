@@ -71,8 +71,11 @@ export const agentApi = {
     request<any[]>(`/agent/config/list${configType ? `?configType=${configType}` : ''}`),
   getConfig: (configKey: string) =>
     request<any>(`/agent/config/${configKey}`),
-  saveConfig: (config: any) =>
-    request<any>('/agent/config/save', { method: 'POST', body: JSON.stringify(config) }),
+  saveConfig: (config: any, applyImmediately = false) =>
+    request<any>(`/agent/config/save${applyImmediately ? '?applyImmediately=true' : ''}`, {
+      method: 'POST',
+      body: JSON.stringify(config),
+    }),
   deleteConfig: (configKey: string) =>
     request<boolean>(`/agent/config/${configKey}`, { method: 'DELETE' }),
   getConfigHistory: (configKey: string) =>

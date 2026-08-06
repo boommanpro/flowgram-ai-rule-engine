@@ -55,7 +55,8 @@ CREATE TABLE IF NOT EXISTS agent_session (
     title VARCHAR(128),
     created_at TEXT,
     updated_at TEXT,
-    is_deleted TINYINT DEFAULT 0
+    is_deleted TINYINT DEFAULT 0,
+    debug_data TEXT
 );
 
 -- Agent 对话消息表（持久化历史对话）

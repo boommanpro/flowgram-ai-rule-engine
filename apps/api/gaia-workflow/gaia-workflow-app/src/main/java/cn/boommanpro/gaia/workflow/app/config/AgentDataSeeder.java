@@ -10,6 +10,7 @@ import cn.boommanpro.gaia.workflow.infra.manage.service.AgentGraphEdgeService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentGraphNodeService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentKnowledgeChunkService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentPermissionService;
+import cn.boommanpro.gaia.workflow.app.service.AgentToolRegistry;
 import cn.hutool.core.io.IoUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
@@ -53,6 +54,7 @@ public class AgentDataSeeder implements ApplicationRunner {
     private final AgentGraphEdgeService graphEdgeService;
     private final AgentPermissionService permissionService;
     private final AgentGlobalPermissionService globalPermissionService;
+    private final AgentToolRegistry toolRegistry;
     private final AgentProperties properties;
 
     public AgentDataSeeder(AgentConfigService configService,
@@ -61,6 +63,7 @@ public class AgentDataSeeder implements ApplicationRunner {
                            AgentGraphEdgeService graphEdgeService,
                            AgentPermissionService permissionService,
                            AgentGlobalPermissionService globalPermissionService,
+                           AgentToolRegistry toolRegistry,
                            AgentProperties properties) {
         this.configService = configService;
         this.knowledgeChunkService = knowledgeChunkService;
@@ -68,6 +71,7 @@ public class AgentDataSeeder implements ApplicationRunner {
         this.graphEdgeService = graphEdgeService;
         this.permissionService = permissionService;
         this.globalPermissionService = globalPermissionService;
+        this.toolRegistry = toolRegistry;
         this.properties = properties;
     }
 
@@ -90,6 +94,8 @@ public class AgentDataSeeder implements ApplicationRunner {
             int configCount = seedNodeKnowledge();
             int ragCount = seedRagKnowledge();
             int[] graphCounts = seedKnowledgeGraph();
+            // 确保工具定义已播种（@PostConstruct 时机可能早于 schema.sql 执行）
+            toolRegistry.ensureSeeded();
             log.info("Agent seed data check complete: modelConfig={}, systemPrompt={}, nodeKnowledge={}, rag={}, graphNodes={}, graphEdges={}",
                     modelCount, promptCount, configCount, ragCount, graphCounts[0], graphCounts[1]);
         } catch (Exception e) {

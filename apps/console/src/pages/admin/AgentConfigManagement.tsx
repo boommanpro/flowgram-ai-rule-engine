@@ -1248,12 +1248,15 @@ const ModelConfigTab: React.FC = () => {
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      await agentApi.saveConfig({
-        configKey: 'llm_config',
-        configType: 'llm_config',
-        title: 'LLM 模型配置',
-        configData: JSON.stringify(form),
-      });
+      await agentApi.saveConfig(
+        {
+          configKey: 'llm_config',
+          configType: 'llm_config',
+          title: 'LLM 模型配置',
+          configData: JSON.stringify(form),
+        },
+        true,
+      );
       Toast.success('保存成功');
     } catch (e) {
       Toast.error(`保存失败: ${(e as Error).message}`);
@@ -1602,13 +1605,14 @@ const PromptEditorTab: React.FC = () => {
           metadata: selectedItem.metadata || {},
           language: selectedItem.language || (lang === 'en' ? 'en' : 'zh'),
         });
+        Toast.success('保存成功');
       } else {
         await agentApi.saveConfig({
           ...selectedItem,
           content: editContent,
         });
+        Toast.success(t('agent.config.savedAsVersion'));
       }
-      Toast.success('保存成功');
       void load();
     } catch (e) {
       Toast.error(`保存失败: ${(e as Error).message}`);
@@ -1636,13 +1640,13 @@ const PromptEditorTab: React.FC = () => {
   const handleRevert = useCallback(async (version: number) => {
     try {
       await agentApi.revertConfig(historyKey, version);
-      Toast.success('回滚成功');
+      Toast.success(t('agent.config.appliedEffective'));
       setHistoryVisible(false);
       void load();
     } catch (e) {
-      Toast.error(`回滚失败: ${(e as Error).message}`);
+      Toast.error(`${t('agent.config.applyFailed')}: ${(e as Error).message}`);
     }
-  }, [historyKey, load]);
+  }, [historyKey, load, t]);
 
   // 新建配置项
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -1721,10 +1725,13 @@ const PromptEditorTab: React.FC = () => {
           language: renameItem.language || (lang === 'en' ? 'en' : 'zh'),
         });
       } else {
-        await agentApi.saveConfig({
-          ...renameItem,
-          title: renameTitle,
-        });
+        await agentApi.saveConfig(
+          {
+            ...renameItem,
+            title: renameTitle,
+          },
+          true,
+        );
       }
       Toast.success('重命名成功');
       setRenameVisible(false);
@@ -1998,14 +2005,17 @@ const PromptEditorTab: React.FC = () => {
         </div>
       )}
 
-      {/* 历史版本 modal */}
+      {/* 版本管理 modal */}
       <Modal
-        title={`历史版本 — ${historyKey}`}
+        title={`${t('agent.config.versionManage')} — ${historyKey}`}
         visible={historyVisible}
         onCancel={() => setHistoryVisible(false)}
         footer={null}
-        width={640}
+        width={680}
       >
+        <Typography.Text type="tertiary" style={{ display: 'block', marginBottom: 12, fontSize: 12 }}>
+          {t('agent.config.versionManageTip')}
+        </Typography.Text>
         {historyLoading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
             <Spin />
@@ -2015,19 +2025,19 @@ const PromptEditorTab: React.FC = () => {
         ) : (
           <Table
             columns={[
-              { title: '版本', dataIndex: 'version', key: 'version', width: 80 },
-              { title: '标题', dataIndex: 'title', key: 'title', width: 160 },
+              { title: t('agent.config.versionCol'), dataIndex: 'version', key: 'version', width: 80 },
+              { title: t('common.title'), dataIndex: 'title', key: 'title', width: 160 },
               {
-                title: '更新时间',
-                dataIndex: 'updatedAt',
-                key: 'updatedAt',
-                width: 160,
+                title: t('agent.config.createdAt'),
+                dataIndex: 'createdAt',
+                key: 'createdAt',
+                width: 170,
                 render: (text: string) => formatDateTime(text),
               },
               {
-                title: '操作',
+                title: t('common.action'),
                 key: 'action',
-                width: 100,
+                width: 130,
                 render: (_t: any, record: any) => (
                   <Button
                     size="small"
@@ -2035,7 +2045,7 @@ const PromptEditorTab: React.FC = () => {
                     style={{ color: ACCENT }}
                     onClick={() => handleRevert(record.version)}
                   >
-                    回滚
+                    {t('agent.config.applyEffective')}
                   </Button>
                 ),
               },
@@ -2295,14 +2305,14 @@ export const AgentConfigManagement: React.FC = () => {
         <TabPane tab={t('agent.config.tabPrompt')} itemKey="prompts">
           <PromptEditorTab />
         </TabPane>
+        <TabPane tab={t('agent.config.tabGraph')} itemKey="graph">
+          <KnowledgeGraphTab />
+        </TabPane>
         <TabPane tab={t('agent.config.tabTools')} itemKey="tools">
           <ToolDefinitionTab />
         </TabPane>
         <TabPane tab={t('agent.config.tabPermission')} itemKey="permission">
           <PermissionTab />
-        </TabPane>
-        <TabPane tab={t('agent.config.tabGraph')} itemKey="graph">
-          <KnowledgeGraphTab />
         </TabPane>
       </Tabs>
     </div>

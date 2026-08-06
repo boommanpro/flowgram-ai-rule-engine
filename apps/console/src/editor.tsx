@@ -10,8 +10,8 @@ import {
   FreeLayoutEditorProvider,
   useClientContext,
 } from '@flowgram.ai/free-layout-editor';
-import { Dropdown, Button as SemiButton } from '@douyinfe/semi-ui';
-import { IconChevronDown, IconPlus, IconHistory } from '@douyinfe/semi-icons';
+import { Dropdown, Button as SemiButton, Toast } from '@douyinfe/semi-ui';
+import { IconChevronDown, IconHistory, IconTick } from '@douyinfe/semi-icons';
 
 import '@flowgram.ai/free-layout-editor/index.css';
 import './index.css';
@@ -254,27 +254,26 @@ const EditorHeader = ({
 
       if (workflowCode) {
         const allVersions = await workflowApi.listVersions(workflowCode);
+        const versionCount = allVersions ? allVersions.length : 0;
+        const newVersionNumber = `v1.${versionCount}`;
 
-        if (allVersions && allVersions.length > 0) {
-          const currentVer = allVersions.find((v: any) => v.isCurrent === 1) || allVersions[0];
-          await workflowApi.updateVersion({
-            ...currentVer,
-            workflowData: dataStr,
-          });
-        } else {
-          await workflowApi.createVersion({
-            workflowCode,
-            versionNumber: 'v1.0',
-            versionDesc: 'Initial version',
-            workflowData: dataStr,
-            createdBy: 'user',
-          });
+        await workflowApi.createVersion({
+          workflowCode,
+          versionNumber: newVersionNumber,
+          versionDesc: `Version ${newVersionNumber}`,
+          workflowData: dataStr,
+          createdBy: 'user',
+        });
+
+        // 首次保存（无历史版本）时自动设为生效版本；后续保存不改变生效版本
+        if (versionCount === 0) {
           const newVersions = await workflowApi.listVersions(workflowCode);
           if (newVersions && newVersions.length > 0) {
             const newest = newVersions[0];
             await workflowApi.setCurrentVersion(newest.id!);
           }
         }
+
         onVersionsChanged();
       }
       setSaved(true);
@@ -287,36 +286,16 @@ const EditorHeader = ({
     }
   };
 
-  const handleSaveAsNewVersion = async () => {
-    if (!ctx?.document || !workflowCode) return;
+  // 设为生效版本
+  const handleSetCurrent = async (versionId: number) => {
     setSaving(true);
     try {
-      const jsonData = ctx.document.toJSON();
-      const dataStr = JSON.stringify(jsonData);
-      const versionCount = versions.length + 1;
-      const newVersionNumber = `v1.${versionCount}`;
-
-      await workflowApi.createVersion({
-        workflowCode,
-        versionNumber: newVersionNumber,
-        versionDesc: `Version ${newVersionNumber}`,
-        workflowData: dataStr,
-        createdBy: 'user',
-      });
-
-      // Set as current version
-      const newVersions = await workflowApi.listVersions(workflowCode);
-      if (newVersions && newVersions.length > 0) {
-        const newest = newVersions[0];
-        await workflowApi.setCurrentVersion(newest.id!);
-      }
-
+      await workflowApi.setCurrentVersion(versionId);
       onVersionsChanged();
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setShowVersionDropdown(false);
+      Toast.success(t('editor.versionSetCurrent'));
     } catch (error) {
-      console.error('Save as new version failed:', error);
-      alert(t('editor.saveAsVersionFailed') + (error as Error).message);
+      Toast.error(t('editor.versionSetCurrentFailed') + (error as Error).message);
     } finally {
       setSaving(false);
     }
@@ -377,77 +356,81 @@ const EditorHeader = ({
                 borderRadius: '8px',
                 boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
                 padding: '6px',
-                minWidth: '240px',
-                maxHeight: '360px',
+                minWidth: '280px',
+                maxHeight: '400px',
                 overflowY: 'auto',
               }}>
-                {/* New Version button */}
-                <button
-                  onClick={() => { handleSaveAsNewVersion(); setShowVersionDropdown(false); }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: 'none',
-                    background: 'transparent',
-                    color: ACCENT,
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    borderRadius: '6px',
-                    textAlign: 'left',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5ff'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                >
-                  <IconPlus size="small" />
-                  {t('editor.saveAsNewVersion')}
-                </button>
-
-                {versions.length > 0 && (
-                  <div style={{ borderTop: '1px solid #f0f0f0', margin: '4px 0' }} />
-                )}
-
                 {/* Version list */}
-                {versions.map((v) => (
-                  <button
-                    key={v.id}
-                    onClick={() => { onSwitchVersion(v.id!); setShowVersionDropdown(false); }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: 'none',
-                      background: v.id === currentVersionId ? '#f0f0ff' : 'transparent',
-                      color: '#1a1a1a',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      borderRadius: '6px',
-                      textAlign: 'left',
-                    }}
-                    onMouseEnter={(e) => { if (v.id !== currentVersionId) e.currentTarget.style.background = '#f5f5f7'; }}
-                    onMouseLeave={(e) => { if (v.id !== currentVersionId) e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontWeight: 600 }}>{v.versionNumber}</span>
-                      {v.id === currentVersionId && (
-                        <span style={{
-                          fontSize: '10px',
-                          color: ACCENT,
-                          background: '#f0f0ff',
-                          padding: '1px 6px',
-                          borderRadius: '4px',
-                          fontWeight: 600,
-                        }}>{t('editor.current')}</span>
+                {versions.map((v) => {
+                  const isViewing = v.id === currentVersionId;
+                  const isEffective = v.isCurrent === 1;
+                  return (
+                    <div
+                      key={v.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 12px',
+                        background: isViewing ? '#f0f0ff' : 'transparent',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        marginBottom: '2px',
+                      }}
+                      onClick={() => { onSwitchVersion(v.id!); setShowVersionDropdown(false); }}
+                      onMouseEnter={(e) => { if (!isViewing) e.currentTarget.style.background = '#f5f5f7'; }}
+                      onMouseLeave={(e) => { if (!isViewing) e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                        <span style={{ fontWeight: 600, fontSize: '13px' }}>{v.versionNumber}</span>
+                        {isEffective && (
+                          <span style={{
+                            fontSize: '10px',
+                            color: '#fff',
+                            background: ACCENT,
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 600,
+                          }}>{t('editor.effective')}</span>
+                        )}
+                        {isViewing && !isEffective && (
+                          <span style={{
+                            fontSize: '10px',
+                            color: '#999',
+                            background: '#f5f5f5',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                          }}>{t('editor.viewing')}</span>
+                        )}
+                        <span style={{ fontSize: '11px', color: '#aaa' }}>{formatDate(v.createdAt)}</span>
+                      </div>
+                      {!isEffective && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleSetCurrent(v.id!); }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 10px',
+                            border: '1px solid #4d53e8',
+                            background: 'transparent',
+                            color: '#4d53e8',
+                            fontSize: '11px',
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            borderRadius: '4px',
+                            whiteSpace: 'nowrap',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#4d53e8'; e.currentTarget.style.color = '#fff'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#4d53e8'; }}
+                        >
+                          <IconTick size="small" />
+                          {t('editor.setEffective')}
+                        </button>
                       )}
                     </div>
-                    <span style={{ fontSize: '11px', color: '#999' }}>{formatDate(v.createdAt)}</span>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             }
           >
@@ -456,7 +439,14 @@ const EditorHeader = ({
               icon={<IconHistory />}
               style={{ fontSize: '13px', color: '#555', height: '32px' }}
             >
-              {currentVersion ? currentVersion.versionNumber : t('editor.version')}
+              {(() => {
+                const effective = versions.find(v => v.isCurrent === 1);
+                if (!effective) return currentVersion ? currentVersion.versionNumber : t('editor.version');
+                if (currentVersion && currentVersion.id !== effective.id) {
+                  return `${effective.versionNumber} / ${currentVersion.versionNumber}`;
+                }
+                return effective.versionNumber;
+              })()}
               <IconChevronDown size="small" style={{ marginLeft: '4px' }} />
             </SemiButton>
           </Dropdown>

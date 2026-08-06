@@ -108,6 +108,15 @@ public class AgentToolRegistry {
     }
 
     /**
+     * 确保工具定义已播种到 DB（表为空时建种）。
+     * 由 {@link cn.boommanpro.gaia.workflow.app.config.AgentDataSeeder} 在 SQL 初始化完成后调用，
+     * 弥补 {@code @PostConstruct} 时机过早可能导致的建种失败。
+     */
+    public void ensureSeeded() {
+        loadFromDatabase(true);
+    }
+
+    /**
      * 旧版 21 个独立工具名（迁移检测用）
      */
     private static final String[] OLD_TOOL_NAMES = {

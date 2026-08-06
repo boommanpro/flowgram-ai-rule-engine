@@ -86,27 +86,38 @@ public class AgentConfigController {
     }
 
     /**
-     * 新增或更新配置（更新前自动归档历史）
+     * 新增或更新配置。
+     * <p>默认行为（applyImmediately=false）：每次保存仅新增一条历史版本，不更新生效版本（主表），
+     * 生效版本需在版本管理中手动切换。
+     * <p>applyImmediately=true：归档当前内容为历史版本后，立即更新生效版本（主表），用于模型配置等需即时生效的场景。
+     * <p>新建（configKey 不存在）：直接写入主表并归档初始版本，不受 applyImmediately 影响。
      */
     @PostMapping("/save")
-    public AgentConfig save(@RequestBody AgentConfig config) {
+    public AgentConfig save(@RequestBody AgentConfig config,
+                            @RequestParam(defaultValue = "false") boolean applyImmediately) {
         String now = LocalDateTime.now().toString();
         AgentConfig existing = configService.getOne(
             new QueryWrapper<AgentConfig>().eq("config_key", config.getConfigKey()));
         if (existing != null) {
-            archiveHistory(existing);
-            config.setId(existing.getId());
-            config.setCreatedAt(existing.getCreatedAt());
-            config.setUpdatedAt(now);
-            configService.updateById(config);
-            log.info("Updated agent config [{}]", config.getConfigKey());
+            archiveHistory(config);
+            if (applyImmediately) {
+                config.setId(existing.getId());
+                config.setCreatedAt(existing.getCreatedAt());
+                config.setUpdatedAt(now);
+                configService.updateById(config);
+                log.info("Updated agent config [{}] (applied immediately)", config.getConfigKey());
+                return config;
+            }
+            log.info("Saved new version for agent config [{}] (effective unchanged)", config.getConfigKey());
+            return existing;
         } else {
             config.setCreatedAt(now);
             config.setUpdatedAt(now);
             configService.save(config);
+            archiveHistory(config);
             log.info("Created agent config [{}]", config.getConfigKey());
+            return config;
         }
-        return config;
     }
 
     /**
@@ -130,7 +141,7 @@ public class AgentConfigController {
     }
 
     /**
-     * 回滚到指定历史版本
+     * 应用指定历史版本为生效版本（更新主表，不产生新的历史记录）
      */
     @PostMapping("/{configKey}/revert/{version}")
     public ResponseEntity<AgentConfig> revert(@PathVariable String configKey,
@@ -147,14 +158,13 @@ public class AgentConfigController {
         if (existing == null) {
             return ResponseEntity.notFound().build();
         }
-        archiveHistory(existing);
         existing.setTitle(target.getTitle());
         existing.setContent(target.getContent());
         existing.setConfigData(target.getConfigData());
         existing.setDescription(target.getDescription());
         existing.setUpdatedAt(LocalDateTime.now().toString());
         configService.updateById(existing);
-        log.info("Reverted agent config [{}] to version {}", configKey, version);
+        log.info("Applied version {} as effective for agent config [{}]", version, configKey);
         return ResponseEntity.ok(existing);
     }
 
