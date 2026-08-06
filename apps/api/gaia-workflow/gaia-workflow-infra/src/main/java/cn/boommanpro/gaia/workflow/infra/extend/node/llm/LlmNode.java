@@ -221,16 +221,7 @@ public class LlmNode extends BaseNode {
             if (RefType.CONSTANT.name().toLowerCase().equals(type)) {
                 return content != null ? content.toString() : null;
             } else if (RefType.REF.name().toLowerCase().equals(type) && content instanceof List) {
-                List<?> refPath = (List<?>) content;
-                if (refPath.size() >= 2) {
-                    String nodeId = refPath.get(0).toString();
-                    String paramName = refPath.get(1).toString();
-                    Object nodeResult = chain.getMemory().get(nodeId);
-                    if (nodeResult instanceof Map) {
-                        Object value = ((Map<?, ?>) nodeResult).get(paramName);
-                        return value != null ? value.toString() : null;
-                    }
-                }
+                return resolveRef((List<?>) content, chain);
             }
         }
         return null;
@@ -252,11 +243,41 @@ public class LlmNode extends BaseNode {
                 return SpringExpressionParser.getInstance().getVueStringValue((String) content, chain.getMemory());
             } else if (RefType.CONSTANT.name().toLowerCase().equals(type)) {
                 return content != null ? content.toString() : null;
+            } else if (RefType.REF.name().toLowerCase().equals(type) && content instanceof List) {
+                // 修复：prompt/systemPrompt 配置为 ref 引用时，从 memory 解析上游节点输出
+                // 此前该分支被遗漏，直接返回空串，导致 LLM 收到空 prompt 仍发请求
+                return resolveRef((List<?>) content, chain);
             }
         } else if (templateObj instanceof String) {
             return (String) templateObj;
         }
         return "";
+    }
+
+    /**
+     * 解析 ref 引用路径，支持任意深度路径（nodeId → field → subField → ...）
+     * 例如 ["start_0","query"] 取 memory[start_0][query]
+     * 例如 ["start_0","output","field"] 取 memory[start_0][output][field]
+     *
+     * @param refPath 引用路径数组
+     * @param chain 工作流链
+     * @return 解析后的字符串值，路径不存在返回 null
+     */
+    private String resolveRef(List<?> refPath, Chain chain) {
+        if (refPath == null || refPath.size() < 2) {
+            return null;
+        }
+        String nodeId = refPath.get(0).toString();
+        Object current = chain.getMemory().get(nodeId);
+        // 逐层深入解析：[1] → [2] → ...
+        for (int i = 1; i < refPath.size(); i++) {
+            if (current instanceof Map) {
+                current = ((Map<?, ?>) current).get(refPath.get(i).toString());
+            } else {
+                return null;
+            }
+        }
+        return current != null ? current.toString() : null;
     }
 
     @Override
@@ -298,7 +319,7 @@ public class LlmNode extends BaseNode {
 
     @Override
     public NodeTypeEnum getNodeType() {
-        return  NodeTypeEnum.CONDITION;
+        return NodeTypeEnum.LLM;
     }
 
     @Override

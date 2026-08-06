@@ -385,15 +385,19 @@ public class AgentChatService {
 
         // === 4. 加载 RAG 知识库 ===
         long ragStart = System.currentTimeMillis();
-        String ragContext = buildRagContext(history, loc);
+        RagResult ragResult = buildRagContext(history, loc);
         long ragMs = System.currentTimeMillis() - ragStart;
         int ragChunks = 0;
-        if (ragContext != null) {
+        boolean ragDegraded = false;
+        String ragContext = null;
+        if (ragResult != null) {
+            ragContext = ragResult.context;
+            ragDegraded = ragResult.degraded;
             systemPrompt += "\n\n" + ragContext;
             // 估算命中条数
             ragChunks = ragContext.split("\\[\\d+\\]").length - 1;
         }
-        log.info("[{}] RAG retrieval: {} chunks matched in {}ms", sessionKey.substring(0, 8), ragChunks, ragMs);
+        log.info("[{}] RAG retrieval: {} chunks matched in {}ms (degraded={})", sessionKey.substring(0, 8), ragChunks, ragMs, ragDegraded);
 
         // === 4.5 加载节点知识库（完整注入系统提示词）
         long nodeKbStart = System.currentTimeMillis();
@@ -497,6 +501,7 @@ public class AgentChatService {
             .set("systemPromptChars", systemPrompt.length())
             .set("ragChunks", ragChunks)
             .set("ragMs", ragMs)
+            .set("ragDegraded", ragDegraded)
             .set("ragContext", ragContext != null ? ragContext : "")
             .set("nodeKbCount", nodeKbCount)
             .set("nodeKbMs", nodeKbMs)
@@ -677,14 +682,16 @@ public class AgentChatService {
 
     /**
      * 构建 RAG 知识库参考上下文（按 locale 过滤语言版本）
+     * 返回 RagResult，包含拼接后的上下文和降级标识
      */
-    private String buildRagContext(List<JSONObject> history, String locale) {
+    private RagResult buildRagContext(List<JSONObject> history, String locale) {
         String userText = extractLastUserText(history);
         if (userText == null || userText.isEmpty()) {
             return null;
         }
 
-        List<AgentKnowledgeChunk> chunks = searchChunks(userText, locale);
+        RagSearchOutcome outcome = searchChunks(userText, locale);
+        List<AgentKnowledgeChunk> chunks = outcome.chunks;
         if (chunks == null || chunks.isEmpty()) {
             return null;
         }
@@ -696,13 +703,34 @@ public class AgentChatService {
                 .append(c.getTitle() != null ? c.getTitle() : "").append(": ")
                 .append(c.getContent() != null ? c.getContent() : "").append("\n");
         }
-        return sb.toString();
+        return new RagResult(sb.toString(), outcome.degraded);
+    }
+
+    /** RAG 检索结果（上下文 + 降级标识） */
+    private static class RagResult {
+        final String context;
+        final boolean degraded;
+        RagResult(String context, boolean degraded) {
+            this.context = context;
+            this.degraded = degraded;
+        }
+    }
+
+    /** searchChunks 内部用，区分向量检索成功 / 降级到关键词 */
+    private static class RagSearchOutcome {
+        final List<AgentKnowledgeChunk> chunks;
+        final boolean degraded;
+        RagSearchOutcome(List<AgentKnowledgeChunk> chunks, boolean degraded) {
+            this.chunks = chunks;
+            this.degraded = degraded;
+        }
     }
 
     /**
      * 知识库分块检索：优先向量余弦相似度，embedding 不可用时退化为关键词 LIKE
+     * 返回 RagSearchOutcome，degraded=true 表示走了关键词降级
      */
-    private List<AgentKnowledgeChunk> searchChunks(String userText, String locale) {
+    private RagSearchOutcome searchChunks(String userText, String locale) {
         String lang = "zh-CN".equals(locale) ? "zh" : "en";
         double[] userEmbedding = embeddingService.embed(userText);
         if (userEmbedding != null) {
@@ -724,7 +752,7 @@ public class AgentChatService {
             }
             if (!result.isEmpty()) {
                 log.debug("RAG vector search: {} chunks with embeddings, returned top {}", allChunks.size(), result.size());
-                return result;
+                return new RagSearchOutcome(result, false);
             }
             // 向量检索无结果时也降级为关键词
         }
@@ -735,7 +763,7 @@ public class AgentChatService {
         } else {
             log.debug("RAG keyword fallback (no vector results): {} chunks", keywordResults.size());
         }
-        return keywordResults;
+        return new RagSearchOutcome(keywordResults, true);
     }
 
     /**
@@ -960,7 +988,10 @@ public class AgentChatService {
             try {
                 args = JSONUtil.parseObj(argsStr);
             } catch (Exception e) {
-                args = new JSONObject().set("raw", argsStr);
+                log.warn("[{}] Failed to parse tool_call arguments for [{}]: argsStr=[{}], error={}",
+                    sessionKey.substring(0, 8), action, argsStr, e.getMessage());
+                // 容错：小模型生成的JSON可能花括号不匹配，尝试补全缺失的右花括号
+                args = tryFixAndParse(argsStr);
             }
 
             String policy = getPolicy(sessionKey, action);
@@ -987,6 +1018,38 @@ public class AgentChatService {
             new QueryWrapper<AgentGlobalPermission>().eq("action", action));
         if (global != null) return global.getPolicy();
         return toolRegistry.getDefaultPolicy(action);
+    }
+
+    /**
+     * 容错解析：小模型生成的JSON可能花括号不匹配（常见于深层嵌套的createPlan steps）。
+     * 策略：1) 尝试补全缺失的右花括号 2) 仍失败则保留raw字符串让前端处理
+     */
+    private JSONObject tryFixAndParse(String argsStr) {
+        // 尝试1：补全缺失的右花括号
+        try {
+            int open = 0, close = 0;
+            boolean inString = false, escape = false;
+            for (char ch : argsStr.toCharArray()) {
+                if (inString) {
+                    if (escape) { escape = false; }
+                    else if (ch == '\\') { escape = true; }
+                    else if (ch == '"') { inString = false; }
+                } else {
+                    if (ch == '"') { inString = true; }
+                    else if (ch == '{') { open++; }
+                    else if (ch == '}') { close++; }
+                }
+            }
+            int diff = open - close;
+            if (diff > 0) {
+                String fixed = argsStr + new String(new char[diff]).replace('\0', '}');
+                JSONObject result = JSONUtil.parseObj(fixed);
+                log.info("Fixed JSON by appending {} closing braces", diff);
+                return result;
+            }
+        } catch (Exception ignored) { }
+        // 尝试2：保留raw字符串
+        return new JSONObject().set("raw", argsStr);
     }
 
     /**

@@ -42,8 +42,16 @@ export interface PlanStep {
   intent: string;
   action: string;
   args?: Record<string, any>;
-  status: 'pending' | 'running' | 'done' | 'error';
+  status: 'pending' | 'running' | 'done' | 'error' | 'testing' | 'testFailed';
   result?: string;
+}
+
+/** 活跃的执行计划（todo 机制） */
+export interface ActivePlan {
+  id: string;
+  steps: PlanStep[];
+  /** 跟踪 addNode 返回的 nodeId，供 connect 步骤 $0/$1 占位符解析 */
+  createdNodeIds: string[];
 }
 
 /** 页面上下文 */

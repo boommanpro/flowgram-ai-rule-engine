@@ -105,6 +105,43 @@ function tryExtractRef(val: any, name: string, type: string): RefField | null {
 }
 
 /**
+ * 从 template 类型字段中提取内嵌的 {{ nodeId.field }} 变量引用
+ * template 格式：{ type: 'template', content: '分析：{{ start_0.text }}' }
+ * 返回格式与 tryExtractRef 一致，便于合并到 refFields 中复用输入框与 memory 构建
+ */
+function extractTemplateRefs(nodeData: any): RefField[] {
+  if (!nodeData || typeof nodeData !== 'object') return [];
+  const inputsValues = nodeData.inputsValues;
+  if (!inputsValues || typeof inputsValues !== 'object') return [];
+  const result: RefField[] = [];
+  const templateRegex = /\{\{\s*([\w.]+)\s*\}\}/g;
+  for (const [fieldName, val] of Object.entries(inputsValues) as [string, any][]) {
+    if (!val || typeof val !== 'object') continue;
+    if (val.type !== 'template') continue;
+    const content = val.content;
+    if (typeof content !== 'string') continue;
+    templateRegex.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = templateRegex.exec(content)) !== null) {
+      const ref = match[1]; // e.g. "start_0.text"
+      const dotIdx = ref.indexOf('.');
+      // 不含 . 的引用无法拆分为 nodeId.field，跳过
+      if (dotIdx === -1) continue;
+      const refNodeId = ref.slice(0, dotIdx);
+      const refParamName = ref.slice(dotIdx + 1);
+      result.push({
+        name: `${fieldName}.${refNodeId}.${refParamName}`,
+        refNodeId,
+        refParamName,
+        refNodeTitle: refNodeId,
+        type: 'string',
+      });
+    }
+  }
+  return result;
+}
+
+/**
  * 从节点的所有可能位置提取 ref 引用字段
  * 覆盖不同节点类型的 ref 存储位置：
  * - inputsValues: end/code/string-format/llm
@@ -163,6 +200,20 @@ function extractRefFields(nodeData: any, fieldTypeMap: Record<string, string>): 
         pushRef(item.right, `assign[${idx}].right`);
       }
     });
+  }
+
+  // 5. template 内嵌的 {{ nodeId.field }} 变量引用
+  //    合并到 refFields，复用输入框与 memory 构建逻辑
+  //    按 refNodeId.refParamName 去重（同一个引用可能同时被 ref 和 template 引用）
+  const templateRefs = extractTemplateRefs(nodeData);
+  const dedupKey = (f: RefField) => `${f.refNodeId}.${f.refParamName}`;
+  const seen = new Set(refFields.map(dedupKey));
+  for (const field of templateRefs) {
+    const key = dedupKey(field);
+    if (!seen.has(key)) {
+      seen.add(key);
+      refFields.push(field);
+    }
   }
 
   return refFields;

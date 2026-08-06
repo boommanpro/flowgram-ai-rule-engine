@@ -43,6 +43,7 @@ const ACTION_GROUPS: { titleKey: string; actions: { name: string; descKey: strin
     titleKey: 'agent.perm.groupPlan',
     actions: [
       { name: 'createPlan', descKey: 'agent.perm.action.createPlan' },
+      { name: 'executeStep', descKey: 'agent.perm.action.executeStep' },
     ],
   },
 ];
@@ -102,7 +103,7 @@ export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose 
   const stats = useMemo(() => {
     let always = 0, confirm = 0, forbid = 0;
     for (const name of ALL_ACTION_NAMES) {
-      const p = permissions[name] || 'confirm';
+      const p = permissions[name] || 'always';
       if (p === 'always') always++;
       else if (p === 'confirm') confirm++;
       else if (p === 'forbid') forbid++;
@@ -287,7 +288,7 @@ export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose 
                 }}
               >
                 {group.actions.map((action, idx) => {
-                  const current = permissions[action.name] || 'confirm';
+                  const current = permissions[action.name] || 'always';
                   return (
                     <div
                       key={action.name}

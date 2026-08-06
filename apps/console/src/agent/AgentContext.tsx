@@ -16,6 +16,7 @@ import { nanoid } from 'nanoid';
 import { agentApi } from './api';
 import { streamChat, streamToolResult, streamCompact, streamSubagent, type ToolResultItem } from './sse-client';
 import { getCanvasContext } from './tools';
+import { getApiBaseUrl } from '../utils/apiConfig';
 import type {
   AgentSession,
   AgentMessage,
@@ -24,6 +25,7 @@ import type {
   ToolCallEvent,
   PageContext,
   PlanStep,
+  ActivePlan,
 } from './types';
 
 /** 工具执行器接口（由 AgentDock 注入） */
@@ -79,6 +81,12 @@ interface AgentContextValue {
 
   // Subagent debug flow
   debugNode: (nodeId: string, instruction: string) => Promise<void>;
+
+  /** 当前活跃的执行计划（createPlan 生成，输入框上方展示） */
+  activePlan: ActivePlan | null;
+
+  /** 画布加载完成时注入画布摘要（进入编辑器时自动读取画布配置） */
+  injectCanvasInfo: (summary: { nodes: Array<{ id: string; type: string; title: string }>; edges: Array<{ from: string; to: string }> }) => void;
 }
 
 const AgentContext = createContext<AgentContextValue | null>(null);
@@ -91,6 +99,14 @@ export function useAgent(): AgentContextValue {
 
 /** 后端消息 → 前端展示消息 */
 function convertMessages(msgs: AgentMessage[]): DisplayMessage[] {
+  // 先建立 tool_call_id → tool 结果 content 映射，用于回填 toolCall.result
+  const toolResultMap = new Map<string, string>();
+  for (const msg of msgs) {
+    if (msg.role === 'tool' && msg.toolCallId) {
+      toolResultMap.set(msg.toolCallId, msg.content || '');
+    }
+  }
+
   const result: DisplayMessage[] = [];
   for (const msg of msgs) {
     const ts = msg.createdAt ? new Date(msg.createdAt).getTime() : Date.now();
@@ -118,28 +134,51 @@ function convertMessages(msgs: AgentMessage[]): DisplayMessage[] {
             try {
               args = JSON.parse(tc.function?.arguments || '{}');
             } catch { /* ignore */ }
+            // 从映射中回填执行结果，使刷新后工具卡片显示正确状态（done/error）
+            const toolResult = toolResultMap.get(tc.id);
+            const actionName = tc.function?.name || 'unknown';
+
+            // createPlan: 从 args.steps 重建 planSteps，使刷新后 PlanCard 仍能展示
+            let planSteps: PlanStep[] | undefined;
+            const argsMap = args as Record<string, any>;
+            if (actionName === 'createPlan' && Array.isArray(argsMap.steps)) {
+              planSteps = argsMap.steps.map((s: any, idx: number) => ({
+                id: `plan-restored-${msg.id}-${idx}`,
+                intent: s.intent || s.description || `Step ${idx + 1}`,
+                action: s.action || 'unknown',
+                args: s.args || {},
+                status: 'done' as const,
+              }));
+            }
+
             result.push({
               id: `msg-${msg.id}-tool-${tc.id}`,
               role: 'tool',
               content: '',
               toolCall: {
                 id: tc.id,
-                action: tc.function?.name || 'unknown',
+                action: actionName,
                 args,
                 policy: 'always',
+                result: toolResult !== undefined ? toolResult.substring(0, 200) : undefined,
               },
+              planSteps,
               timestamp: ts,
             });
           }
         } catch { /* ignore */ }
       }
     } else if (msg.role === 'tool') {
-      result.push({
-        id: `msg-${msg.id}`,
-        role: 'tool',
-        content: msg.content || '',
-        timestamp: ts,
-      });
+      // tool 结果已通过上面的映射回填到对应 toolCall.result，这里跳过单独渲染
+      // 仅当该 tool 消息没有对应 toolCallId 时（孤儿结果）才单独展示
+      if (!msg.toolCallId) {
+        result.push({
+          id: `msg-${msg.id}`,
+          role: 'tool',
+          content: msg.content || '',
+          timestamp: ts,
+        });
+      }
     }
   }
   return result;
@@ -176,6 +215,17 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     setFocusDebugEntryId(entryId);
     setDebugPanelOpen(true);
   };
+
+  // 活跃的执行计划（todo 机制：createPlan 生成，executeStep 逐个执行）
+  const [activePlan, setActivePlan] = useState<ActivePlan | null>(null);
+  // activePlan 的同步 ref：executeStep 在同一轮 while 循环中紧跟 executePlan 调用，
+  // 此时 setActivePlan 尚未 flush，闭包里的 activePlan 仍是旧值，必须用 ref 同步读取。
+  const activePlanRef = useRef<ActivePlan | null>(null);
+  // messages 的同步 ref：同上，fallback 路径从 messages 查找 planSteps 时也需要最新值
+  const messagesRef = useRef<DisplayMessage[]>([]);
+  messagesRef.current = messages;
+  // plan 步骤对应的展示消息 ID（用于更新 PlanCard）
+  const planMsgIdRef = useRef<string | null>(null);
 
   const location = useLocation();
   const toolExecutorRef = useRef<ToolExecutor | null>(null);
@@ -217,7 +267,24 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!currentSessionKey) return;
     agentApi.getMessages(currentSessionKey).then((msgs) => {
-      setMessages(convertMessages(msgs || []));
+      const converted = convertMessages(msgs || []);
+      setMessages(converted);
+      // 从历史消息中恢复 activePlan（最后一条含 planSteps 的消息）
+      const lastPlanMsg = [...converted].reverse().find((m) => m.planSteps && m.planSteps.length > 0);
+      if (lastPlanMsg && lastPlanMsg.planSteps) {
+        const restored = {
+          id: lastPlanMsg.id,
+          steps: lastPlanMsg.planSteps,
+          createdNodeIds: [],
+        };
+        activePlanRef.current = restored;
+        setActivePlan(restored);
+        planMsgIdRef.current = lastPlanMsg.id;
+      } else {
+        activePlanRef.current = null;
+        setActivePlan(null);
+        planMsgIdRef.current = null;
+      }
     }).catch(() => {});
     agentApi.getPermissions(currentSessionKey).then(setPermissions).catch(() => {});
   }, [currentSessionKey]);
@@ -261,6 +328,24 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
       }
     }).catch(() => {});
   }, [currentSessionKey]);
+
+  // debugEntries 加载后，为历史 assistant 消息按时序重建 debugEntryId 关联（刷新恢复跳转）
+  useEffect(() => {
+    if (debugEntries.length === 0) return;
+    setMessages((prev) => {
+      let entryIdx = 0;
+      let changed = false;
+      const updated = prev.map((m) => {
+        // 只为有内容且未关联 debugEntryId 的 assistant 消息重建关联
+        if (m.role === 'assistant' && m.content && !m.debugEntryId && entryIdx < debugEntries.length) {
+          changed = true;
+          return { ...m, debugEntryId: debugEntries[entryIdx++].id };
+        }
+        return m;
+      });
+      return changed ? updated : prev;
+    });
+  }, [debugEntries]);
 
   // 调试信息变更时持久化到 localStorage + 后端 DB（debounced）
   const debugEntriesRef = useRef<typeof debugEntries>([]);
@@ -404,29 +489,109 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  /** 执行 Plan：渲染步骤卡片 → 自动逐步执行 → 实时更新状态 */
+  /** 更新 plan 步骤状态（同步 activePlan 和 message 中的 planSteps） */
+  const updatePlanStepStatus = useCallback(
+    (stepIndex: number, status: PlanStep['status'], result?: string) => {
+      // 同步更新 ref（executeStep 在同一轮循环中后续调用可立即读到最新状态）
+      const prev = activePlanRef.current;
+      if (prev) {
+        const updated = [...prev.steps];
+        if (updated[stepIndex]) {
+          updated[stepIndex] = { ...updated[stepIndex], status, result };
+        }
+        const next = { ...prev, steps: updated };
+        activePlanRef.current = next;
+        setActivePlan(next);
+      }
+      const msgId = planMsgIdRef.current;
+      if (msgId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msgId && m.planSteps
+              ? {
+                  ...m,
+                  planSteps: m.planSteps.map((ps, idx) =>
+                    idx === stepIndex ? { ...ps, status, result } : ps
+                  ),
+                }
+              : m
+          )
+        );
+      }
+    },
+    []
+  );
+
+  /** 真实调用后端单节点测试 API（不打开面板，直接 HTTP 请求并等待结果） */
+  const runNodeReal = useCallback(
+    async (nodeId: string, inputs?: Record<string, any>): Promise<any> => {
+      const ctx = getCanvasContext();
+      if (!ctx) {
+        return { error: 'not in editor page' };
+      }
+      try {
+        const node = ctx.getNodeById(nodeId);
+        if (!node) {
+          return { error: `node ${nodeId} not found on canvas` };
+        }
+        const nodeJson = (node as any).toJSON ? (node as any).toJSON() : node;
+        const response = await fetch(`${getApiBaseUrl()}/task/runNode`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            node: JSON.stringify(nodeJson),
+            inputs: inputs || {},
+          }),
+        });
+        const data = await response.json();
+        return data;
+      } catch (e) {
+        return { error: (e as Error).message };
+      }
+    },
+    []
+  );
+
+  /** createPlan：生成计划（todo list），不自动执行，提示 AI 调用 executeStep 逐个执行 */
   const executePlan = useCallback(
     async (event: ToolCallEvent): Promise<ToolResultItem> => {
-      const rawSteps = Array.isArray(event.args.steps) ? event.args.steps : [];
+      let rawSteps = Array.isArray(event.args.steps) ? event.args.steps : [];
+      // 容错：后端可能因 JSON 解析失败把 arguments 原样存到 args.raw
+      if (rawSteps.length === 0 && event.args?.raw) {
+        try {
+          const parsed = JSON.parse(event.args.raw as string);
+          if (Array.isArray(parsed?.steps)) {
+            rawSteps = parsed.steps;
+          }
+        } catch { /* ignore */ }
+      }
       if (rawSteps.length === 0) {
         return {
           toolCallId: event.id,
-          result: JSON.stringify({ success: true, stepsCount: 0 }),
+          result: JSON.stringify({ success: false, error: 'steps is empty', receivedArgs: event.args }),
           rejected: false,
         };
       }
 
-      // 构建 PlanStep 列表
+      const planId = nanoid(8);
       const planSteps: PlanStep[] = rawSteps.map((s: any, idx: number) => ({
-        id: `plan-step-${idx}-${nanoid(4)}`,
+        id: `plan-${planId}-step-${idx}`,
         intent: s.intent || s.description || `Step ${idx + 1}`,
         action: s.action || 'unknown',
         args: s.args || {},
         status: 'pending' as const,
       }));
 
-      // 创建一条带 planSteps 的展示消息
+      // 存入 activePlan 状态（todo 机制：AI 逐个 executeStep 执行）
+      // 同步设置 ref：同一轮 while 循环中 executeStep 紧接着被调用，
+      // 此时 setActivePlan 尚未 flush，必须用 ref 同步传递。
+      const newPlan = { id: planId, steps: planSteps, createdNodeIds: [] };
+      activePlanRef.current = newPlan;
+      setActivePlan(newPlan);
+
+      // 渲染 PlanCard 消息（todo list 风格）
       const planMsgId = nanoid();
+      planMsgIdRef.current = planMsgId;
       setMessages((prev) => [
         ...prev,
         {
@@ -438,125 +603,15 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
         },
       ]);
 
-      const executor = toolExecutorRef.current;
-      const results: string[] = [];
-
-      // 逐步执行
-      const createdNodeIds: string[] = []; // 跟踪 addNode 返回的 nodeId
-      for (let i = 0; i < planSteps.length; i++) {
-        const step = planSteps[i];
-
-        // 更新为 running
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === planMsgId
-              ? {
-                  ...m,
-                  planSteps: m.planSteps!.map((ps, idx) =>
-                    idx === i ? { ...ps, status: 'running' as const } : ps
-                  ),
-                }
-              : m
-          )
-        );
-
-        try {
-          if (!executor) {
-            throw new Error('tool executor not registered');
-          }
-          // 解析 connect 步骤中的占位 nodeId
-          // $0, $1, $2... 引用第 N 个 addNode 返回的 nodeId
-          // 非标准 nodeId（非 start_0/end_0/已知 nodeId）自动替换为最近创建的 nodeId
-          let resolvedArgs = { ...step.args };
-          if (step.action === 'canvas' && resolvedArgs?.action === 'connect') {
-            const resolveNodeId = (id: string): string => {
-              if (!id) return id;
-              if (id === 'start_0' || id === 'end_0') return id;
-              if (createdNodeIds.includes(id)) return id;
-              // $N 索引引用
-              const match = id.match(/^\$(\d+)$/);
-              if (match) {
-                const idx = parseInt(match[1]);
-                return createdNodeIds[idx] || createdNodeIds[createdNodeIds.length - 1] || id;
-              }
-              // 其他非标准 ID，替换为最近创建的 nodeId
-              return createdNodeIds[createdNodeIds.length - 1] || id;
-            };
-            resolvedArgs.from = resolveNodeId(resolvedArgs.from);
-            resolvedArgs.to = resolveNodeId(resolvedArgs.to);
-          }
-          const { result, rejected } = await executor.execute(step.action, resolvedArgs || {});
-          const parsed = (() => {
-            try {
-              return JSON.parse(result);
-            } catch {
-              return { raw: result };
-            }
-          })();
-
-          // 如果是 addNode，提取返回的 nodeId 供后续 connect 使用
-          if (step.action === 'canvas' && step.args?.action === 'addNode') {
-            const nodeId = parsed?.nodeId || parsed?.id;
-            if (nodeId && typeof nodeId === 'string') {
-              createdNodeIds.push(nodeId);
-            }
-          }
-
-          results.push(JSON.stringify({ action: step.action, result: parsed, rejected }));
-
-          // 更新为 done
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === planMsgId
-                ? {
-                    ...m,
-                    planSteps: m.planSteps!.map((ps, idx) =>
-                      idx === i
-                        ? {
-                            ...ps,
-                            status: 'done' as const,
-                            result:
-                              typeof parsed === 'object' && parsed !== null
-                                ? JSON.stringify(parsed).slice(0, 120)
-                                : String(result).slice(0, 120),
-                          }
-                        : ps
-                    ),
-                  }
-                : m
-            )
-          );
-        } catch (e) {
-          const errMsg = (e as Error).message;
-          results.push(JSON.stringify({ action: step.action, error: errMsg }));
-
-          // 更新为 error
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === planMsgId
-                ? {
-                    ...m,
-                    planSteps: m.planSteps!.map((ps, idx) =>
-                      idx === i
-                        ? { ...ps, status: 'error' as const, result: errMsg.slice(0, 120) }
-                        : ps
-                    ),
-                  }
-                : m
-            )
-          );
-          // 出错后停止后续步骤
-          break;
-        }
-      }
-
+      // 返回给 LLM：计划已创建，提示调用 executeStep
       return {
         toolCallId: event.id,
         result: JSON.stringify({
           success: true,
+          planId,
           stepsCount: planSteps.length,
-          executedCount: results.length,
-          results,
+          nextStepIndex: 0,
+          message: `Plan created with ${planSteps.length} steps. Call executeStep(stepIndex=0) to execute the first step. After each step, check the result and continue with executeStep(stepIndex=N+1) or adjust and retry.`,
         }),
         rejected: false,
       };
@@ -564,12 +619,205 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  /** executeStep：执行 plan 中的单个步骤，返回结果供 AI 决策下一步 */
+  const executeStep = useCallback(
+    async (event: ToolCallEvent): Promise<ToolResultItem> => {
+      const stepIndex =
+        typeof event.args.stepIndex === 'number'
+          ? event.args.stepIndex
+          : parseInt(event.args.stepIndex, 10);
+      // 从 ref 读取最新 activePlan（避免闭包过期导致 "no active plan"）
+      let currentPlan = activePlanRef.current;
+      // activePlan 丢失时（会话切换/刷新），从 messages 中的 planSteps 恢复
+      if (!currentPlan) {
+        const planMsg = messagesRef.current.find((m) => m.planSteps && m.planSteps.length > 0);
+        if (planMsg && planMsg.planSteps) {
+          currentPlan = {
+            id: planMsg.id,
+            steps: planMsg.planSteps,
+            createdNodeIds: [],
+          };
+          activePlanRef.current = currentPlan;
+          setActivePlan(currentPlan);
+          planMsgIdRef.current = planMsg.id;
+        }
+      }
+      if (!currentPlan) {
+        return { toolCallId: event.id, result: JSON.stringify({ error: 'no active plan, call createPlan first' }), rejected: false };
+      }
+      if (isNaN(stepIndex) || stepIndex < 0 || stepIndex >= currentPlan.steps.length) {
+        return {
+          toolCallId: event.id,
+          result: JSON.stringify({ error: `invalid stepIndex ${event.args.stepIndex}` }),
+          rejected: false,
+        };
+      }
+
+      const step = currentPlan.steps[stepIndex];
+      const executor = toolExecutorRef.current;
+      if (!executor) {
+        return { toolCallId: event.id, result: JSON.stringify({ error: 'tool executor not registered' }), rejected: false };
+      }
+
+      updatePlanStepStatus(stepIndex, 'running');
+
+      try {
+        // 解析 canvas 步骤中的占位 nodeId（$0/$1 引用 + 非标准 ID 替换）
+        // 适用于 connect/runNode/updateNode/deleteNode/addNode(afterNodeId) 等所有引用节点的子动作
+        // 同时递归解析 data 内的 ref 引用（如 end 节点的 inputsValues.result.content: ["$0", "result"]）
+        const currentCreatedNodeIds = currentPlan.createdNodeIds;
+        const resolveNodeId = (id: string): string => {
+          if (!id || typeof id !== 'string') return id;
+          if (id === 'start_0' || id === 'end_0' || id === 'start' || id === 'end') return id;
+          if (currentCreatedNodeIds.includes(id)) return id;
+          const match = id.match(/^\$(\d+)$/);
+          if (match) {
+            const idx = parseInt(match[1], 10);
+            return currentCreatedNodeIds[idx] || currentCreatedNodeIds[currentCreatedNodeIds.length - 1] || id;
+          }
+          // 非标准 ID（非 hex/uuid 形式）替换为最近创建的 nodeId
+          return currentCreatedNodeIds[currentCreatedNodeIds.length - 1] || id;
+        };
+
+        // 递归解析 data 中 ref content 数组里的占位 nodeId
+        // 例：{type:"ref", content:["$0","result"]} → {type:"ref", content:["实际nodeId","result"]}
+        const resolveRefValue = (val: any): any => {
+          if (val == null) return val;
+          if (typeof val === 'string') return resolveNodeId(val);
+          if (Array.isArray(val)) {
+            // ref content: [nodeId, fieldName] — 只解析第一个元素（nodeId）
+            if (val.length === 2 && typeof val[0] === 'string' && typeof val[1] === 'string') {
+              return [resolveNodeId(val[0]), val[1]];
+            }
+            return val.map(resolveRefValue);
+          }
+          if (typeof val === 'object') {
+            const out: Record<string, any> = {};
+            for (const k of Object.keys(val)) {
+              out[k] = resolveRefValue(val[k]);
+            }
+            return out;
+          }
+          return val;
+        };
+
+        const resolvedArgs = { ...step.args };
+        if (step.action === 'canvas') {
+          // 顶层 nodeId/from/to/afterNodeId
+          if (resolvedArgs.nodeId) resolvedArgs.nodeId = resolveNodeId(resolvedArgs.nodeId);
+          if (resolvedArgs.from) resolvedArgs.from = resolveNodeId(resolvedArgs.from);
+          if (resolvedArgs.to) resolvedArgs.to = resolveNodeId(resolvedArgs.to);
+          if (resolvedArgs.afterNodeId) resolvedArgs.afterNodeId = resolveNodeId(resolvedArgs.afterNodeId);
+          // data 内的 ref 引用（end/loop/condition/llm 节点的 inputsValues/prompt 等可能用 $0 引用）
+          if (resolvedArgs.data) {
+            resolvedArgs.data = resolveRefValue(resolvedArgs.data);
+          }
+        }
+
+        // runNode 步骤：真实调用后端测试 API，等待结果回流
+        if (step.action === 'canvas' && resolvedArgs.action === 'runNode') {
+          updatePlanStepStatus(stepIndex, 'testing');
+          const testResult = await runNodeReal(resolvedArgs.nodeId, resolvedArgs.inputs);
+          const success = !testResult?.error;
+          updatePlanStepStatus(
+            stepIndex,
+            success ? 'done' : 'testFailed',
+            JSON.stringify(testResult).slice(0, 200)
+          );
+          const isLastStep = stepIndex >= currentPlan.steps.length - 1;
+          return {
+            toolCallId: event.id,
+            result: JSON.stringify({
+              success,
+              stepIndex,
+              testResult,
+              nextStepIndex: success ? (isLastStep ? null : stepIndex + 1) : null,
+              message: success
+                ? `Step ${stepIndex} test passed.${isLastStep ? ' All steps completed.' : ` Call executeStep(stepIndex=${stepIndex + 1}) to continue.`}`
+                : `Step ${stepIndex} test FAILED. Adjust node config with canvas(action=updateNode) then re-executeStep(stepIndex=${stepIndex}).`,
+            }),
+            rejected: false,
+          };
+        }
+
+        // 普通步骤：执行工具
+        const { result, rejected } = await executor.execute(step.action, resolvedArgs || {});
+        const parsed = (() => {
+          try {
+            return JSON.parse(result);
+          } catch {
+            return { raw: result };
+          }
+        })();
+
+        // addNode：提取返回的 nodeId 供后续 connect 使用
+        let newNodeId: string | undefined;
+        if (step.action === 'canvas' && step.args?.action === 'addNode') {
+          newNodeId = parsed?.nodeId || parsed?.id;
+          if (newNodeId && typeof newNodeId === 'string') {
+            const idToAdd: string = newNodeId;
+            // 同步更新 ref + state（后续 connect 步骤需读到最新 createdNodeIds）
+            const prevPlan = activePlanRef.current;
+            if (prevPlan) {
+              const nextPlan = { ...prevPlan, createdNodeIds: [...prevPlan.createdNodeIds, idToAdd] };
+              activePlanRef.current = nextPlan;
+              setActivePlan(nextPlan);
+            }
+          }
+        }
+
+        updatePlanStepStatus(
+          stepIndex,
+          'done',
+          typeof parsed === 'object' && parsed !== null
+            ? JSON.stringify(parsed).slice(0, 200)
+            : String(result).slice(0, 200)
+        );
+
+        const isLastStep = stepIndex >= currentPlan.steps.length - 1;
+        return {
+          toolCallId: event.id,
+          result: JSON.stringify({
+            success: true,
+            stepIndex,
+            result: parsed,
+            nodeId: newNodeId,
+            rejected,
+            nextStepIndex: isLastStep ? null : stepIndex + 1,
+            message: isLastStep
+              ? 'All plan steps completed.'
+              : `Step ${stepIndex} done. Call executeStep(stepIndex=${stepIndex + 1}) to continue.`,
+          }),
+          rejected: false,
+        };
+      } catch (e) {
+        const errMsg = (e as Error).message;
+        updatePlanStepStatus(stepIndex, 'error', errMsg.slice(0, 200));
+        return {
+          toolCallId: event.id,
+          result: JSON.stringify({
+            success: false,
+            stepIndex,
+            error: errMsg,
+            message: `Step ${stepIndex} failed: ${errMsg}. Adjust and re-executeStep(stepIndex=${stepIndex}).`,
+          }),
+          rejected: false,
+        };
+      }
+    },
+    [runNodeReal, updatePlanStepStatus]
+  );
+
   /** 执行单个 tool_call */
   const executeOneTool = useCallback(
     async (event: ToolCallEvent): Promise<ToolResultItem> => {
-      // createPlan 特殊处理：渲染 PlanCard 并自动逐步执行
+      // createPlan 特殊处理：生成计划（todo list），不自动执行
       if (event.action === 'createPlan') {
         return executePlan(event);
+      }
+      // executeStep 特殊处理：执行 plan 中的单个步骤（todo 机制）
+      if (event.action === 'executeStep') {
+        return executeStep(event);
       }
       // forbid → 自动拒绝
       if (event.policy === 'forbid') {
@@ -601,7 +849,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
         };
       }
     },
-    [showConfirm, executePlan]
+    [showConfirm, executePlan, executeStep]
   );
 
   /** 将调试条目直接持久化到指定会话的 localStorage（不更新当前视图） */
@@ -932,6 +1180,16 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  /** 画布加载完成时注入画布摘要（进入编辑器时自动读取画布配置） */
+  const injectCanvasInfo = useCallback(
+    (summary: { nodes: Array<{ id: string; type: string; title: string }>; edges: Array<{ from: string; to: string }> }) => {
+      // 画布摘要已通过 getPageContextJson() 随每次请求发送给后端，无需在聊天 UI 中显示。
+      // 此处保留接口签名仅为兼容 EditorCanvasBridge 调用，不再注入聊天消息（避免消息流抖动）。
+      void summary;
+    },
+    []
+  );
+
   /** Subagent debug flow: triggers a subagent SSE session for a node debug task */
   const debugNode = useCallback(
     async (nodeId: string, instruction: string) => {
@@ -1064,6 +1322,8 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     updatePermission,
     updateGlobalPermission,
     debugNode,
+    activePlan,
+    injectCanvasInfo,
   };
 
   return <AgentContext.Provider value={value}>{children}</AgentContext.Provider>;

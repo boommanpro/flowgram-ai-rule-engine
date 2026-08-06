@@ -1,6 +1,5 @@
 package cn.boommanpro.gaia.workflow.app.service;
 
-import cn.boommanpro.gaia.workflow.app.config.AgentProperties;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -16,37 +15,46 @@ import java.nio.charset.StandardCharsets;
 /**
  * Embedding 向量化服务
  * 负责：调用 LLM API 的 /embeddings 端点获取向量、向量与 JSON 互转
+ *
+ * <p>配置来源：优先从 DB embedding_config 读取（支持独立 apiHost/apiKey/model），
+ * 留空字段复用 LLM 配置；embedding.enabled=false 时不调用 API，直接返回 null，
+ * 由上层 AgentChatService 降级为关键词检索。
  */
 @Slf4j
 @Service
 public class EmbeddingService {
 
-    private final AgentProperties properties;
+    private final AgentModelConfigService modelConfigService;
 
-    public EmbeddingService(AgentProperties properties) {
-        this.properties = properties;
+    public EmbeddingService(AgentModelConfigService modelConfigService) {
+        this.modelConfigService = modelConfigService;
     }
 
     /**
-     * 调用 LLM /embeddings 端点获取文本向量
-     * 任何异常（API 不可用、解析失败、非 200）均记录警告并返回 null
+     * 调用 /embeddings 端点获取文本向量
+     * 任何异常（配置禁用、API 不可用、解析失败、非 200）均记录警告并返回 null
      */
     public double[] embed(String text) {
         if (text == null || text.isEmpty()) {
             return null;
         }
+        AgentModelConfigService.EmbeddingConfig config = modelConfigService.getEmbeddingConfig();
+        if (!config.isEnabled()) {
+            log.debug("Embedding 已被禁用（embedding_config.enabled=false），跳过向量检索");
+            return null;
+        }
         try {
             JSONObject body = new JSONObject()
-                .set("model", properties.getLlm().getModel())
+                .set("model", config.getModel())
                 .set("input", text);
 
-            String url = properties.getLlm().getApiHost();
+            String url = config.getApiHost();
             if (!url.endsWith("/")) url += "/";
             url += "embeddings";
 
             HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setRequestMethod("POST");
-            conn.setRequestProperty("Authorization", "Bearer " + properties.getLlm().getApiKey());
+            conn.setRequestProperty("Authorization", "Bearer " + config.getApiKey());
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoOutput(true);
             conn.setConnectTimeout(10000);
@@ -80,9 +88,13 @@ public class EmbeddingService {
     }
 
     /**
-     * 探测 embedding 服务是否可用（一次平凡调用返回非空即为可用）
+     * 探测 embedding 服务是否可用（配置启用且一次平凡调用返回非空即为可用）
      */
     public boolean isAvailable() {
+        AgentModelConfigService.EmbeddingConfig config = modelConfigService.getEmbeddingConfig();
+        if (!config.isEnabled()) {
+            return false;
+        }
         return embed("ping") != null;
     }
 

@@ -537,6 +537,7 @@ const PERMISSION_GROUPS: { title: string; actions: { name: string; desc: string 
     title: '计划',
     actions: [
       { name: 'createPlan', desc: '创建多步骤执行计划' },
+      { name: 'executeStep', desc: '逐步执行计划中的单个步骤' },
     ],
   },
 ];
@@ -600,7 +601,7 @@ const PermissionTab: React.FC = () => {
   const stats = useMemo(() => {
     let always = 0, confirm = 0, forbid = 0;
     for (const name of ALL_PERMISSION_ACTIONS) {
-      const p = permissions[name] || 'confirm';
+      const p = permissions[name] || 'always';
       if (p === 'always') always++;
       else if (p === 'confirm') confirm++;
       else if (p === 'forbid') forbid++;
@@ -1212,19 +1213,38 @@ const DEFAULT_MODEL_CONFIG: ModelConfigForm = {
   contextWindow: 8192,
 };
 
+interface EmbeddingConfigForm {
+  enabled: boolean;
+  apiHost: string;
+  apiKey: string;
+  model: string;
+}
+
+const DEFAULT_EMBEDDING_CONFIG: EmbeddingConfigForm = {
+  enabled: true,
+  apiHost: '',
+  apiKey: '',
+  model: '',
+};
+
 const ModelConfigTab: React.FC = () => {
   useLanguage();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingEmbedding, setSavingEmbedding] = useState(false);
   const [form, setForm] = useState<ModelConfigForm>(DEFAULT_MODEL_CONFIG);
+  const [embeddingForm, setEmbeddingForm] = useState<EmbeddingConfigForm>(DEFAULT_EMBEDDING_CONFIG);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await agentApi.listConfigs('llm_config');
-      const item = (data || [])[0];
-      if (item) {
-        const parsed = tryParseJson(item.configData) || {};
+      const [llmData, embData] = await Promise.all([
+        agentApi.listConfigs('llm_config'),
+        agentApi.listConfigs('embedding_config'),
+      ]);
+      const llmItem = (llmData || [])[0];
+      if (llmItem) {
+        const parsed = tryParseJson(llmItem.configData) || {};
         setForm({
           apiHost: parsed.apiHost ?? '',
           apiKey: parsed.apiKey ?? '',
@@ -1232,6 +1252,16 @@ const ModelConfigTab: React.FC = () => {
           temperature: typeof parsed.temperature === 'number' ? parsed.temperature : 0.7,
           maxTokens: typeof parsed.maxTokens === 'number' ? parsed.maxTokens : 4096,
           contextWindow: typeof parsed.contextWindow === 'number' ? parsed.contextWindow : 8192,
+        });
+      }
+      const embItem = (embData || [])[0];
+      if (embItem) {
+        const parsed = tryParseJson(embItem.configData) || {};
+        setEmbeddingForm({
+          enabled: parsed.enabled !== false,
+          apiHost: parsed.apiHost ?? '',
+          apiKey: parsed.apiKey ?? '',
+          model: parsed.model ?? '',
         });
       }
     } catch (e) {
@@ -1264,6 +1294,26 @@ const ModelConfigTab: React.FC = () => {
       setSaving(false);
     }
   }, [form]);
+
+  const handleSaveEmbedding = useCallback(async () => {
+    setSavingEmbedding(true);
+    try {
+      await agentApi.saveConfig(
+        {
+          configKey: 'embedding_config',
+          configType: 'embedding_config',
+          title: 'Embedding 向量检索配置',
+          configData: JSON.stringify(embeddingForm),
+        },
+        true,
+      );
+      Toast.success('保存成功');
+    } catch (e) {
+      Toast.error(`保存失败: ${(e as Error).message}`);
+    } finally {
+      setSavingEmbedding(false);
+    }
+  }, [embeddingForm]);
 
   if (loading) {
     return (
@@ -1345,6 +1395,94 @@ const ModelConfigTab: React.FC = () => {
           <Button theme="solid" style={{ background: ACCENT }} loading={saving} onClick={handleSave}>
             {t('agent.config.modelSave')}
           </Button>
+        </div>
+      </div>
+
+      {/* Embedding 向量检索配置分区 */}
+      <div
+        style={{
+          marginTop: 24,
+          paddingTop: 20,
+          borderTop: '1px dashed #e8e8ea',
+          maxWidth: 640,
+        }}
+      >
+        <Typography.Title heading={5} style={{ marginBottom: 4 }}>
+          {t('agent.config.embeddingSection')}
+        </Typography.Title>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Switch
+              checked={embeddingForm.enabled}
+              onChange={(v) => setEmbeddingForm({ ...embeddingForm, enabled: v })}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <Typography.Text strong style={{ fontSize: 13 }}>
+                {t('agent.config.embeddingEnabled')}
+              </Typography.Text>
+              <Typography.Text type="tertiary" style={{ fontSize: 11 }}>
+                {t('agent.config.embeddingEnabledHint')}
+              </Typography.Text>
+            </div>
+          </div>
+          <div>
+            <Typography.Text strong style={{ fontSize: 13 }}>
+              {t('agent.config.embeddingHost')}
+            </Typography.Text>
+            <Input
+              value={embeddingForm.apiHost}
+              onChange={(v) => setEmbeddingForm({ ...embeddingForm, apiHost: v })}
+              placeholder="https://api.openai.com/v1"
+              style={{ marginTop: 6 }}
+              disabled={!embeddingForm.enabled}
+            />
+          </div>
+          <div>
+            <Typography.Text strong style={{ fontSize: 13 }}>
+              {t('agent.config.embeddingKey')}
+            </Typography.Text>
+            <Input
+              value={embeddingForm.apiKey}
+              onChange={(v) => setEmbeddingForm({ ...embeddingForm, apiKey: v })}
+              placeholder="sk-..."
+              style={{ marginTop: 6 }}
+              disabled={!embeddingForm.enabled}
+            />
+          </div>
+          <div>
+            <Typography.Text strong style={{ fontSize: 13 }}>
+              {t('agent.config.embeddingModel')}
+            </Typography.Text>
+            <Input
+              value={embeddingForm.model}
+              onChange={(v) => setEmbeddingForm({ ...embeddingForm, model: v })}
+              placeholder={t('agent.config.embeddingModelPlaceholder')}
+              style={{ marginTop: 6 }}
+              disabled={!embeddingForm.enabled}
+            />
+          </div>
+          <div
+            style={{
+              padding: 12,
+              background: '#e6f4ff',
+              border: '1px solid #91caff',
+              borderRadius: 8,
+              fontSize: 12,
+              color: '#0958d9',
+            }}
+          >
+            {t('agent.config.embeddingNote')}
+          </div>
+          <div>
+            <Button
+              theme="solid"
+              style={{ background: ACCENT }}
+              loading={savingEmbedding}
+              onClick={handleSaveEmbedding}
+            >
+              {t('agent.config.embeddingSave')}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

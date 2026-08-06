@@ -50,6 +50,52 @@ public class AgentToolRegistry {
      */
     private final Map<String, String> defaultPolicies = new HashMap<>();
 
+    /**
+     * 节点 data 参数的结构提示（嵌入 canvas 工具的 data 参数 description 中）
+     * <p>
+     * 系统会将 LLM 提供的简化扁平字段自动 normalize 为 flowgram 嵌套结构，
+     * 并与默认模板深度合并，因此 LLM 只需填写关键字段。
+     * 将此提示内联到工具定义中，使 AI 无需依赖知识库即可构造合法节点 data。
+     */
+    private static final String NODE_DATA_SCHEMA_HINT =
+        "节点数据（addNode/updateNode 时使用，只需填关键字段，系统自动合并默认模板并 normalize）。\n" +
+        "支持简化扁平写法，系统会自动转换为嵌套 inputsValues 结构。各类型关键字段：\n" +
+        "\n" +
+        "【llm】填 prompt/systemPrompt/temperature/modelName/apiKey/apiHost（扁平字符串/数字即可）。\n" +
+        "  prompt 和 systemPrompt 支持 Vue 模板语法引用上游输出：{{ nodeId.fieldName }}\n" +
+        "  示例：{\"prompt\":\"分析以下文本的情感：{{ start.text }}\",\"systemPrompt\":\"你是情感分析助手\",\"temperature\":0.3,\"modelName\":\"gpt-4o\"}\n" +
+        "\n" +
+        "【code】填 script 和 outputs。\n" +
+        "  script: {language:\"java\",content:\"return Map.of(\\\"result\\\", input.get(\\\"text\\\"));\"}\n" +
+        "  outputs: {type:\"object\",properties:{result:{type:\"string\"}}}\n" +
+        "\n" +
+        "【http】填 method/url/headers/body（扁平即可，自动 normalize）。\n" +
+        "  示例：{\"method\":\"POST\",\"url\":\"https://api.example.com\",\"headers\":{\"Content-Type\":\"application/json\"},\"body\":\"{\\\"key\\\":\\\"value\\\"}\"}\n" +
+        "\n" +
+        "【condition】填 conditions 数组，每项含 left/value/operator。\n" +
+        "  left 可用 ref 简写引用上游：{\"ref\":\"nodeId.fieldName\"}\n" +
+        "  示例：{\"conditions\":[{\"left\":{\"ref\":\"start.text\"},\"operator\":\"contains\",\"value\":\"好\"}]}\n" +
+        "\n" +
+        "【start】填 outputs 定义输出字段。\n" +
+        "  示例：{\"outputs\":{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\",\"description\":\"待分析文本\"}}}}\n" +
+        "\n" +
+        "【end】填 inputsValues 引用上游输出作为最终结果。\n" +
+        "  ref 格式：{type:\"ref\",content:[\"nodeId\",\"fieldName\"]}\n" +
+        "  示例：{\"inputsValues\":{\"result\":{\"type\":\"ref\",\"content\":[\"llm_1\",\"result\"]}}}\n" +
+        "\n" +
+        "【loop】填 loopFor（ref 数组）和 loopOutputs。\n" +
+        "  示例：{\"loopFor\":{\"type\":\"ref\",\"content\":[\"start\",\"items\"]}}\n" +
+        "\n" +
+        "【branches】填 branches 数组，每项含 conditions 和目标端口。\n" +
+        "\n" +
+        "【variable/string-format】填 inputsValues 和 outputs。\n" +
+        "  string-format 的 script.content 用 SpEL 表达式：如 \"'结果：' + #start.text\"\n" +
+        "\n" +
+        "引用上游节点输出的两种方式：\n" +
+        "1. ref 显式：{type:\"ref\",content:[\"nodeId\",\"field\"]}\n" +
+        "2. 简写：{ref:\"nodeId.field\"}（系统自动转换）\n" +
+        "3. 模板内联：在 prompt/systemPrompt 中用 {{ nodeId.field }}";
+
     public AgentToolRegistry(AgentToolDefinitionService toolDefinitionService,
                              AgentConfigService configService) {
         this.toolDefinitionService = toolDefinitionService;
@@ -385,6 +431,7 @@ public class AgentToolRegistry {
             case "canvas":
                 return "canvas";
             case "createPlan":
+            case "executeStep":
                 return "plan";
             default:
                 return "other";
@@ -408,12 +455,13 @@ public class AgentToolRegistry {
 
     private Map<String, String> buildDefaultPolicies() {
         Map<String, String> policies = new HashMap<>();
-        // 复合工具策略
+        // 复合工具策略（默认全部总是允许，减少用户手动确认）
         policies.put("navigate", "always");
         policies.put("query", "always");
-        policies.put("manage", "confirm");
-        policies.put("canvas", "confirm");
+        policies.put("manage", "always");
+        policies.put("canvas", "always");
         policies.put("createPlan", "always");
+        policies.put("executeStep", "always");
         return policies;
     }
 
@@ -459,7 +507,7 @@ public class AgentToolRegistry {
                 str("nodeId", "节点ID（updateNode/deleteNode/runNode时使用）", null),
                 str("afterNodeId", "在此节点之后添加（action=addNode时可选使用）", null),
                 str("title", "节点标题（action=addNode时可选使用）", null),
-                objProp("data", "节点数据（addNode/updateNode时使用，只填关键字段）"),
+                objProp("data", NODE_DATA_SCHEMA_HINT),
                 str("from", "源节点ID（connect/disconnect时使用）", null),
                 str("to", "目标节点ID（connect/disconnect时使用）", null),
                 str("fromPort", "源端口（connect时可选，用于分支/条件节点）", null),
@@ -476,6 +524,13 @@ public class AgentToolRegistry {
                         str("action", "要执行的工具名称", null),
                         objProp("args", "工具参数")
                     }))
+            }
+        )));
+
+        // ===== 6. 执行单步 =====
+        tools.add(func("executeStep", "执行 plan 中的单个步骤。createPlan 生成计划后，逐个调用此工具执行步骤，根据结果决定继续下一步或调整重试。", obj(
+            new String[]{"stepIndex"}, new JSONObject[]{
+                num("stepIndex", "要执行的步骤索引（从0开始，对应 createPlan 返回的 steps 数组索引）", 0)
             }
         )));
 
@@ -520,6 +575,13 @@ public class AgentToolRegistry {
         JSONObject p = new JSONObject().set("__name", name).set("type", "string");
         if (desc != null) p.set("description", desc);
         if (extra != null) p.putAll(extra);
+        return p;
+    }
+
+    private JSONObject num(String name, String desc, Number defaultValue) {
+        JSONObject p = new JSONObject().set("__name", name).set("type", "number");
+        if (desc != null) p.set("description", desc);
+        if (defaultValue != null) p.set("default", defaultValue);
         return p;
     }
 

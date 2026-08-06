@@ -12,6 +12,7 @@ import { createToolExecutor } from './tools';
 import MessageList from './MessageList';
 import SessionList from './SessionList';
 import { DebugPanel } from './DebugPanel';
+import { PlanCard } from './PlanCard';
 import type { ToolCallEvent } from './types';
 
 const ACCENT = '#4d53e8';
@@ -182,12 +183,17 @@ export const AgentDockPanel: React.FC = () => {
     debugPanelOpen,
     setDebugPanelOpen,
     focusDebugEntryId,
+    activePlan,
   } = useAgent();
   const navigate = useNavigate();
   useLanguage();
 
   const [input, setInput] = useState('');
   const [showSessionList, setShowSessionList] = useState(false);
+  const [planCollapsed, setPlanCollapsed] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(420);
+  const [textareaHeight, setTextareaHeight] = useState(56);
+  const [isResizing, setIsResizing] = useState(false);
 
   // Task 1c: multimodal image input
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -209,6 +215,11 @@ export const AgentDockPanel: React.FC = () => {
       void createSession();
     }
   }, [dockOpen, sessions.length, currentSessionKey, createSession]);
+
+  // 切换会话时重置 plan 折叠状态（新会话 PlanCard 默认展开）
+  useEffect(() => {
+    setPlanCollapsed(false);
+  }, [currentSessionKey]);
 
   /** 读取单个 File 为 base64 data URL */
   const readFileAsDataURL = useCallback((file: File): Promise<string> => {
@@ -284,6 +295,58 @@ export const AgentDockPanel: React.FC = () => {
     [handleSend]
   );
 
+  /** 面板宽度拖拽：拖动左侧边缘调整宽度（320-600px） */
+  const onPanelResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const startX = e.clientX;
+      const startWidth = panelWidth;
+      setIsResizing(true);
+      const onMove = (ev: MouseEvent) => {
+        const delta = startX - ev.clientX;
+        const newWidth = Math.max(320, Math.min(600, startWidth + delta));
+        setPanelWidth(newWidth);
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        setIsResizing(false);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    },
+    [panelWidth]
+  );
+
+  /** 输入框高度拖拽：拖动手柄调整高度（40-300px） */
+  const onTextareaResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const startY = e.clientY;
+      const startHeight = textareaHeight;
+      const onMove = (ev: MouseEvent) => {
+        const delta = ev.clientY - startY;
+        const newHeight = Math.max(40, Math.min(300, startHeight + delta));
+        setTextareaHeight(newHeight);
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      document.body.style.cursor = 'row-resize';
+      document.body.style.userSelect = 'none';
+    },
+    [textareaHeight]
+  );
+
   const currentSession = sessions.find((s) => s.sessionKey === currentSessionKey);
   const headerTitle = currentSession ? currentSession.title : t('agent.title');
 
@@ -294,7 +357,7 @@ export const AgentDockPanel: React.FC = () => {
         <div
           style={{
             position: 'fixed',
-            right: '420px',
+            right: panelWidth,
             top: 0,
             width: '180px',
             height: '100vh',
@@ -312,8 +375,8 @@ export const AgentDockPanel: React.FC = () => {
       {/* 动画外层容器：宽度 0 → 420px */}
       <div
         style={{
-          width: dockOpen ? '420px' : '0',
-          transition: 'width 0.3s ease',
+          width: dockOpen ? panelWidth : 0,
+          transition: isResizing ? 'none' : 'width 0.3s ease',
           overflow: 'hidden',
           height: '100vh',
           flexShrink: 0,
@@ -325,7 +388,7 @@ export const AgentDockPanel: React.FC = () => {
         {/* 主面板（固定宽度，防止动画过程中内容回流） */}
         <div
           style={{
-            width: '420px',
+            width: panelWidth,
             height: '100vh',
             background: 'rgba(255,255,255,0.85)',
             backdropFilter: 'blur(12px)',
@@ -336,7 +399,27 @@ export const AgentDockPanel: React.FC = () => {
             boxShadow: '-4px 0 20px rgba(0,0,0,0.05)',
           }}
         >
-          {/* 顶部栏 */}
+            {/* 拖拽条：调整面板宽度 */}
+            <div
+              onMouseDown={onPanelResizeStart}
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: '4px',
+                cursor: 'col-resize',
+                background: 'transparent',
+                zIndex: 10,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(0,0,0,0.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
+            />
+            {/* 顶部栏 */}
           <div
             style={{
               height: '48px',
@@ -461,6 +544,60 @@ export const AgentDockPanel: React.FC = () => {
             </div>
           )}
 
+          {/* 执行计划（输入框上方，可折叠，coding agent 风格） */}
+          {activePlan && activePlan.steps.length > 0 && (
+            <div
+              style={{
+                flexShrink: 0,
+                borderTop: '1px solid #eee',
+                borderBottom: planCollapsed ? '1px solid #eee' : 'none',
+                background: '#fafafa',
+              }}
+            >
+              <div
+                onClick={() => setPlanCollapsed((v) => !v)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  fontSize: '11px',
+                  color: ACCENT,
+                  fontWeight: 600,
+                }}
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 10 10"
+                  style={{
+                    transform: planCollapsed ? 'rotate(-90deg)' : 'rotate(0)',
+                    transition: 'transform 0.2s',
+                  }}
+                >
+                  <path d="M2 3 L5 7 L8 3" fill="none" stroke={ACCENT} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span>执行计划</span>
+                <span style={{ color: '#bbb', fontWeight: 400 }}>
+                  {activePlan.steps.filter((s) => s.status === 'done').length}/{activePlan.steps.length} 完成
+                </span>
+              </div>
+              <div
+                style={{
+                  padding: planCollapsed ? '0 12px' : '0 12px 8px',
+                  maxHeight: planCollapsed ? '0' : '200px',
+                  overflowY: 'auto',
+                  transition: 'max-height 0.2s ease-out, opacity 0.2s ease-out, padding 0.2s ease-out',
+                  opacity: planCollapsed ? 0 : 1,
+                }}
+              >
+                <PlanCard steps={activePlan.steps} />
+              </div>
+            </div>
+          )}
+
           {/* 输入区 */}
           <div
             style={{
@@ -528,6 +665,23 @@ export const AgentDockPanel: React.FC = () => {
               style={{ display: 'none' }}
             />
 
+            {/* 拖拽手柄：调整输入框高度 */}
+            <div
+              onMouseDown={onTextareaResizeStart}
+              style={{
+                height: '4px',
+                cursor: 'row-resize',
+                background: 'transparent',
+                borderRadius: '2px',
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(0,0,0,0.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+              }}
+            />
             {/* 输入行：图片按钮 + textarea + 发送/停止 */}
             <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
               <button
@@ -579,7 +733,8 @@ export const AgentDockPanel: React.FC = () => {
                   fontSize: '13px',
                   lineHeight: '1.5',
                   minHeight: '40px',
-                  maxHeight: '120px',
+                  maxHeight: '300px',
+                  height: textareaHeight,
                   outline: 'none',
                   background: '#fff',
                   color: '#1a1a1a',

@@ -376,9 +376,15 @@ export function createToolExecutor(navigate: NavigateFn): ToolExecutor {
 
           // ===== Plan 类 =====
           case 'createPlan':
-            // plan 的步骤由 AgentContext 自动执行，这里返回步骤列表
+            // createPlan 由 AgentContext 特殊处理（生成 todo list，不自动执行）
             return {
               result: JSON.stringify({ success: true, stepsCount: args.steps?.length || 0 }),
+              rejected: false,
+            };
+          case 'executeStep':
+            // executeStep 由 AgentContext 特殊处理（执行单个 plan 步骤）
+            return {
+              result: JSON.stringify({ success: true, stepIndex: args.stepIndex }),
               rejected: false,
             };
 

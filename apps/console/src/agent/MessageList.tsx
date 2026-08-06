@@ -6,9 +6,9 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 
 import { useAgent } from './AgentContext';
 import { useLanguage, t } from '../i18n';
-import PlanCard from './PlanCard';
 import SubagentCard from './SubagentCard';
 import Markdown from './Markdown';
+import { PlanCard } from './PlanCard';
 import type { DisplayMessage, ToolCallEvent } from './types';
 
 const ACCENT = '#4d53e8';
@@ -590,12 +590,24 @@ export const MessageList: React.FC = () => {
             continue;
           }
           if (m.role === 'tool') {
+            // Plan steps 消息：渲染为 PlanCard（不归入工具调用分组）
+            if (m.planSteps && m.planSteps.length > 0) {
+              items.push(
+                <React.Fragment key={m.id}>
+                  <PlanCard steps={m.planSteps} />
+                </React.Fragment>
+              );
+              i++;
+              continue;
+            }
             // 收集连续的 tool 消息，合并为一张分组卡片
             const group: DisplayMessage[] = [];
             while (i < messages.length && messages[i].role === 'tool') {
-              // 跳过内容和 toolCall 均为空的 tool 消息
               const tm = messages[i];
-              if (!tm.content && !tm.toolCall && !tm.planSteps && !tm.subagentSteps) {
+              // planSteps 消息单独渲染为 PlanCard，跳出分组循环
+              if (tm.planSteps && tm.planSteps.length > 0) break;
+              // 跳过内容和 toolCall 均为空的 tool 消息
+              if (!tm.content && !tm.toolCall && !tm.subagentSteps) {
                 i++;
                 continue;
               }
@@ -606,11 +618,6 @@ export const MessageList: React.FC = () => {
               items.push(
                 <React.Fragment key={`tool-group-${group[0].id}`}>
                   <GroupedToolCard messages={group} />
-                  {group.map((gm) =>
-                    gm.planSteps && gm.planSteps.length > 0 ? (
-                      <PlanCard key={`plan-${gm.id}`} steps={gm.planSteps} />
-                    ) : null
-                  )}
                 </React.Fragment>
               );
             }
@@ -623,7 +630,6 @@ export const MessageList: React.FC = () => {
                   streaming={streaming}
                   onOptionClick={handleOptionClick}
                 />
-                {m.planSteps && m.planSteps.length > 0 && <PlanCard steps={m.planSteps} />}
               </React.Fragment>
             );
             i++;

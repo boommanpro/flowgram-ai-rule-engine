@@ -18,6 +18,7 @@ import { usePanelManager } from '@flowgram.ai/panel-manager-plugin';
 
 import { setCanvasContext, type CanvasContext } from './tools';
 import { agentRunBridge } from './agent-run-bridge';
+import { useAgent } from './AgentContext';
 
 /**
  * 深度合并节点 data：数组整体替换，对象递归合并，其余直接覆盖
@@ -48,6 +49,7 @@ export const EditorCanvasBridge: React.FC = () => {
   const tools = usePlaygroundTools();
   const linesManager = useService(WorkflowLinesManager);
   const panelManager = usePanelManager();
+  const { injectCanvasInfo } = useAgent();
 
   useEffect(() => {
     if (!ctx?.document) return;
@@ -90,6 +92,21 @@ export const EditorCanvasBridge: React.FC = () => {
           (line.sourcePortID
             ? outputPorts.find((p) => String(p.portID) === String(line.sourcePortID))
             : undefined) || outputPorts[0];
+
+        // 插入中间节点场景：自动断开源端口已有的出边，避免旧直连边残留
+        // 与 UI 交互路径（line-add-button）的 buildLine + line.dispose() 语义对齐
+        const allLines = linesManager.getAllLines();
+        for (const existing of allLines) {
+          // 同源端口已有出边，且不是同一条（to 不同），则 dispose 旧边
+          if (
+            existing.from?.id === line.sourceNodeID &&
+            existing.to?.id !== line.targetNodeID &&
+            String(existing.fromPort?.portID) === String(fromPort?.portID) &&
+            linesManager.canRemove(existing)
+          ) {
+            existing.dispose();
+          }
+        }
 
         // 使用 linesManager.createLine 创建连线
         linesManager.createLine({
@@ -214,10 +231,28 @@ export const EditorCanvasBridge: React.FC = () => {
 
     setCanvasContext(canvasContext);
 
+    // 进入画布时主动读取画布当前配置，注入到 Agent 对话中
+    try {
+      const doc = ctx.document.toJSON();
+      const nodes = (doc.nodes || []).map((n: any) => ({
+        id: String(n.id),
+        type: String(n.type),
+        title: n.data?.title || '',
+      }));
+      const edges = ((doc as any).edges || []).map((e: any) => ({
+        from: String(e.from?.id || e.from || ''),
+        to: String(e.to?.id || e.to || ''),
+      }));
+      // 延迟注入，确保 AgentContext 已初始化
+      setTimeout(() => injectCanvasInfo({ nodes, edges }), 500);
+    } catch {
+      // 读取画布失败时静默
+    }
+
     return () => {
       setCanvasContext(null);
     };
-  }, [ctx, tools, linesManager, panelManager]);
+  }, [ctx, tools, linesManager, panelManager, injectCanvasInfo]);
 
   // Register as the agentRunBridge listener (canvas side).
   // Handles run requests sent before this listener was mounted via pending replay.

@@ -44,63 +44,31 @@
 - `data`: 节点数据（addNode/updateNode 时使用）
 - `inputs`: 运行输入参数（runWorkflow/runNode 时使用）
 
-### 5. `createPlan` — 创建执行计划
-- `steps`: 执行步骤数组，每步包含 `intent`、`action`（工具名）、`args`（工具参数）
-- 用于复杂任务，如创建完整 workflow：先制定计划，再逐步执行 canvas 工具
+### createPlan + executeStep（todo 机制）
 
-## 复杂工作流创建流程（重要）
+对于复杂任务（如创建完整 workflow），使用 todo 机制逐步执行：
 
-当用户要求创建一个包含多个节点的工作流时，必须按以下标准流程执行：
+1. **createPlan**：制定计划，返回步骤列表（不自动执行）
+2. **executeStep**：逐个执行步骤，每步执行后根据结果决定继续下一步或调整重试
 
-### 步骤 1：判断当前页面
-- 检查页面上下文中的 `route` 字段
-- 如果不在编辑器（route 不以 `/editor/` 开头），先调用 `manage`（action=createWorkflow）创建工作流
-- 创建后系统会自动跳转到编辑器，此时画布上已有 Start 和 End 节点
-
-### 步骤 2：制定执行计划
-调用 `createPlan` 制定步骤，例如用户要"LLM 情感+咨询工作流"，计划应为：
+createPlan 的 steps 示例：
 ```json
 {
   "steps": [
-    {"intent": "创建LLM分类节点", "action": "canvas", "args": {"action": "addNode", "type": "llm", "data": {"title": "意图分类", "inputsValues": {"modelName": {"type": "constant", "content": "qwen/qwen3-4b-2507"}, "apiKey": {"type": "constant", "content": "dummy"}, "apiHost": {"type": "constant", "content": "http://localhost:1234/api/v1"}, "temperature": {"type": "constant", "content": 0.5}, "systemPrompt": {"type": "template", "content": "分析用户输入是情感问题还是咨询问题，输出JSON: {\"type\":\"emotion\"或\"consult\"}"}, "prompt": {"type": "ref", "content": ["start_0", "query"]}}, "inputs": {"type": "object", "required": ["modelName", "apiKey", "apiHost", "temperature", "prompt"], "properties": {"modelName": {"type": "string"}, "apiKey": {"type": "string"}, "apiHost": {"type": "string"}, "temperature": {"type": "number"}, "systemPrompt": {"type": "string", "extra": {"formComponent": "prompt-editor"}}, "prompt": {"type": "string", "extra": {"formComponent": "prompt-editor"}}}}, "outputs": {"type": "object", "properties": {"result": {"type": "string"}}}}}},
-    {"intent": "创建JSON解析code节点", "action": "canvas", "args": {"action": "addNode", "type": "code", "data": {"title": "解析分类结果", "script": {"language": "javascript", "content": "var r = JSON.parse(result || '{}'); var t = r.type || 'consult'; t;"}, "inputsValues": {"result": {"type": "ref", "content": ["llm_0", "result"]}}, "inputs": {"type": "object", "properties": {"result": {"type": "string"}}}, "outputs": {"type": "object", "properties": {"result": {"type": "string"}}}}}},
-    {"intent": "创建条件分支节点", "action": "canvas", "args": {"action": "addNode", "type": "condition", "data": {"title": "情感or咨询", "conditions": [{"key": "branch_0", "value": {"left": {"type": "ref", "content": ["code_0", "result"]}, "operator": "eq", "right": {"type": "constant", "content": "emotion"}}}, {"key": "branch_1", "value": {"left": {"type": "ref", "content": ["code_0", "result"]}, "operator": "eq", "right": {"type": "constant", "content": "consult"}}}]}}},
-    {"intent": "创建情感LLM节点", "action": "canvas", "args": {"action": "addNode", "type": "llm", "data": {"title": "情感对话", "inputsValues": {"modelName": {"type": "constant", "content": "qwen/qwen3-4b-2507"}, "apiKey": {"type": "constant", "content": "dummy"}, "apiHost": {"type": "constant", "content": "http://localhost:1234/api/v1"}, "temperature": {"type": "constant", "content": 0.7}, "systemPrompt": {"type": "template", "content": "你是情感陪伴助手，用温暖的语言回应用户"}, "prompt": {"type": "ref", "content": ["start_0", "query"]}}, "inputs": {"type": "object", "required": ["modelName", "apiKey", "apiHost", "temperature", "prompt"], "properties": {"modelName": {"type": "string"}, "apiKey": {"type": "string"}, "apiHost": {"type": "string"}, "temperature": {"type": "number"}, "systemPrompt": {"type": "string", "extra": {"formComponent": "prompt-editor"}}, "prompt": {"type": "string", "extra": {"formComponent": "prompt-editor"}}}}, "outputs": {"type": "object", "properties": {"result": {"type": "string"}}}}}},
-    {"intent": "创建咨询LLM节点", "action": "canvas", "args": {"action": "addNode", "type": "llm", "data": {"title": "咨询问答", "inputsValues": {"modelName": {"type": "constant", "content": "qwen/qwen3-4b-2507"}, "apiKey": {"type": "constant", "content": "dummy"}, "apiHost": {"type": "constant", "content": "http://localhost:1234/api/v1"}, "temperature": {"type": "constant", "content": 0.3}, "systemPrompt": {"type": "template", "content": "你是专业咨询助手，给出结构化建议"}, "prompt": {"type": "ref", "content": ["start_0", "query"]}}, "inputs": {"type": "object", "required": ["modelName", "apiKey", "apiHost", "temperature", "prompt"], "properties": {"modelName": {"type": "string"}, "apiKey": {"type": "string"}, "apiHost": {"type": "string"}, "temperature": {"type": "number"}, "systemPrompt": {"type": "string", "extra": {"formComponent": "prompt-editor"}}, "prompt": {"type": "string", "extra": {"formComponent": "prompt-editor"}}}}, "outputs": {"type": "object", "properties": {"result": {"type": "string"}}}}}},
-    {"intent": "连接Start到分类LLM", "action": "canvas", "args": {"action": "connect", "from": "start_0", "to": "上一步返回的nodeId"}},
-    {"intent": "连接分类LLM到Code", "action": "canvas", "args": {"action": "connect", "from": "分类LLM的nodeId", "to": "Code解析的nodeId"}},
-    {"intent": "连接Code到Condition", "action": "canvas", "args": {"action": "connect", "from": "Code解析的nodeId", "to": "Condition的nodeId"}},
-    {"intent": "连接Condition分支0到情感LLM", "action": "canvas", "args": {"action": "connect", "from": "Condition的nodeId", "fromPort": "branch_0", "to": "情感LLM的nodeId"}},
-    {"intent": "连接Condition分支1到咨询LLM", "action": "canvas", "args": {"action": "connect", "from": "Condition的nodeId", "fromPort": "branch_1", "to": "咨询LLM的nodeId"}},
-    {"intent": "连接情感LLM到End", "action": "canvas", "args": {"action": "connect", "from": "情感LLM的nodeId", "to": "end_0"}},
-    {"intent": "连接咨询LLM到End", "action": "canvas", "args": {"action": "connect", "from": "咨询LLM的nodeId", "to": "end_0"}}
+    {"intent": "创建 LLM 节点", "action": "canvas", "args": {"action": "addNode", "type": "llm", "data": {...}}},
+    {"intent": "连接 start 到 llm", "action": "canvas", "args": {"action": "connect", "from": "start_0", "to": "$0"}},
+    {"intent": "测试 LLM 节点", "action": "canvas", "args": {"action": "runNode", "nodeId": "$0", "inputs": {"query": "测试输入"}}},
+    {"intent": "连接 llm 到 end", "action": "canvas", "args": {"action": "connect", "from": "$0", "to": "end_0"}}
   ]
 }
 ```
 
-### 步骤 3：逐步执行
-- 按计划顺序，每次调用一个 `canvas` 工具
-- addNode 返回的 nodeId 用于后续 connect 的 from/to 参数
-- **每创建一个节点后，从工具返回结果中获取 nodeId，用于下一步连接**
-- 不要跳过连接步骤，所有节点必须正确连线
-
-### 节点连线规则
-- Start 节点 id 为 `start_0`，End 节点 id 为 `end_0`
-- connect 时 `from` 和 `to` 必须是已存在的节点 id
-- condition 节点的分支端口为 `branch_0`、`branch_1`... 对应 conditions 数组顺序
-- branches 节点类似，每个分支有对应的输出端口
-
-## 节点创建规则（重要）
-
-### 单步执行原则
-- **每次只创建或修改一个节点**，不要一次性生成完整画布
-- 创建 workflow 时先用 `createPlan` 制定计划，再逐步执行 `canvas`（action=addNode）+ `canvas`（action=connect）
-
-### 节点测试（重要）
-创建 LLM 节点后，应调用 `canvas`（action=runNode）测试节点是否能正常工作：
-- 参数：`nodeId`（addNode 返回的 nodeId）、`inputs`（模拟输入，如 `{"start_0": {"query": "测试输入"}}`）
-- 测试失败时根据错误信息调整节点配置（如 apiHost、modelName、代码错误等）
-- **每个 LLM 节点和 code 节点创建后都应测试**，确保可用后再连接后续节点
+**关键原则**：
+- 每个 LLM 节点和 code 节点创建后，**必须插入 runNode 测试步骤**（在连接后续节点之前）
+- runNode 步骤会真正执行节点测试并返回结果
+- 测试失败时，用 canvas(action=updateNode) 调整配置后重新 executeStep 执行测试步骤
+- 测试通过后才连接后续节点
+- $0/$1 引用 createPlan 中第 N 个 addNode 返回的 nodeId
 
 ### 可用节点类型
 | 类型 | 说明 |
@@ -119,75 +87,17 @@
 | `comment` | 注释 |
 
 ### data 参数填写规则
-`canvas`（action=addNode）的 `data` 参数只需提供关键字段，系统会自动填充默认值。
+`canvas` 工具的 `data` 参数 description 中已内联各节点类型的关键字段说明和示例，**请直接参考工具定义中的 data 参数描述**来构造节点数据。
 
-#### llm 节点关键字段（必须完整提供）
+系统支持简化扁平写法，会自动 normalize 为嵌套结构并合并默认模板，因此只需填关键字段。
 
-`data` 参数必须包含 `inputsValues`、`inputs`、`outputs` 三个字段。`inputsValues` 中每个字段用 `{"type": "constant", "content": 值}` 或 `{"type": "template", "content": "模板"}` 或 `{"type": "ref", "content": ["节点id", "字段名"]}` 格式。
+例如 llm 节点可直接写：`{"prompt":"分析情感：{{ start.text }}","systemPrompt":"你是助手","temperature":0.3,"modelName":"gpt-4o"}`
 
-```json
-{
-  "title": "意图分类",
-  "inputsValues": {
-    "modelName": {"type": "constant", "content": "qwen/qwen3-4b-2507"},
-    "apiKey": {"type": "constant", "content": "dummy"},
-    "apiHost": {"type": "constant", "content": "http://localhost:1234/api/v1"},
-    "temperature": {"type": "constant", "content": 0.5},
-    "systemPrompt": {"type": "template", "content": "分析用户输入是情感问题还是咨询问题，输出JSON: {\"type\":\"emotion\"或\"consult\"}"},
-    "prompt": {"type": "ref", "content": ["start_0", "query"]}
-  },
-  "inputs": {
-    "type": "object",
-    "required": ["modelName", "apiKey", "apiHost", "temperature", "prompt"],
-    "properties": {
-      "modelName": {"type": "string"},
-      "apiKey": {"type": "string"},
-      "apiHost": {"type": "string"},
-      "temperature": {"type": "number"},
-      "systemPrompt": {"type": "string", "extra": {"formComponent": "prompt-editor"}},
-      "prompt": {"type": "string", "extra": {"formComponent": "prompt-editor"}}
-    }
-  },
-  "outputs": {"type": "object", "properties": {"result": {"type": "string"}}}
-}
-```
-
-**规则：**
-- `modelName`/`apiKey`/`apiHost`/`temperature` 用 `type: "constant"`
-- `systemPrompt`/`prompt` 用 `type: "template"`（常量文本）或 `type: "ref"`（引用上游节点输出）
-- `prompt` 引用 Start 节点输入时用 `{"type": "ref", "content": ["start_0", "query"]}`
-- `inputs.required` 必须包含 `modelName`、`apiKey`、`apiHost`、`temperature`、`prompt`
-- `inputs.properties` 中 `systemPrompt` 和 `prompt` 必须有 `extra: {formComponent: "prompt-editor"}`
-- `outputs` 固定为 `{type: "object", properties: {result: {type: "string"}}}`
-
-#### code 节点关键字段
-- `script`：脚本对象，包含 `language`（`javascript`/`java`/`groovy`）和 `content`
-- `inputs`：输入参数 schema，声明接收哪些上游变量
-- `outputs`：输出参数 schema，声明返回哪些字段
-- `inputsValues`：变量引用，同 llm 节点
-- JavaScript 代码中，输入参数直接作为顶层变量可用，最后一个表达式的值即为返回值
-
+code 节点的 JavaScript 中，输入参数直接作为顶层变量可用，最后一个表达式的值即为返回值：
 ```javascript
-// 示例：解析 LLM 返回的 JSON
 var parsed = JSON.parse(result || '{}');
-var type = parsed.type || 'consult';
-type;
+parsed.type || 'consult';
 ```
-
-#### http 节点关键字段
-- `method`：HTTP 方法（GET/POST）
-- `url`：请求地址
-- `headers`：请求头
-- `body`：请求体
-
-#### condition 节点关键字段
-- `conditions`：条件数组，每个条件包含 `key`（字段名）和 `value`（匹配值）
-- 条件按顺序对应分支端口 `branch_0`、`branch_1`...
-- 示例：`[{"key": "type", "value": "emotion"}, {"key": "type", "value": "consult"}]`
-
-#### branches 节点关键字段
-- `branches`：分支数组，每个分支包含 `title` 和 `condition`
-- 类似 condition 但支持更复杂的分支逻辑
 
 ## 信息补充规则
 

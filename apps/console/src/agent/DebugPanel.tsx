@@ -258,19 +258,32 @@ export const DebugPanel: React.FC<{ onClose?: () => void; focusEntryId?: string 
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
                         <ContextBadge label={t('agent.debugModel')} value={ctx.model} color={ACCENT} />
                         <ContextBadge label={t('agent.debugTools')} value={`${ctx.toolsCount} (${ctx.toolsMs}ms)`} color="#389e0d" />
-                        <ContextBadge label={t('agent.debugRag')} value={`${ctx.ragChunks} (${ctx.ragMs}ms)`} color="#d46b08" />
+                        <ContextBadge
+                          label={t('agent.debugRag')}
+                          value={`${ctx.ragChunks} (${ctx.ragMs}ms)${ctx.ragDegraded ? ' · 关键词降级' : ''}`}
+                          color={ctx.ragDegraded ? '#e5404e' : '#d46b08'}
+                        />
                         <ContextBadge label={t('agent.debugGraph')} value={`${ctx.graphNodes} (${ctx.graphMs}ms)`} color="#cf1322" />
                         <ContextBadge label={t('agent.debugHistory')} value={`${ctx.historyMessages} 条`} color="#555" />
                         <ContextBadge label={t('agent.debugSystemPrompt')} value={`${ctx.systemPromptChars} 字`} color="#555" />
                         <ContextBadge label={t('agent.debugTotalMessages')} value={`${ctx.totalMessages}`} color="#555" />
                       </div>
+                      {/* RAG 降级提示（embedding 不可用，已降级为关键词检索） */}
+                      {ctx.ragDegraded && (
+                        <ContextContentBlock
+                          label="Embedding 不可用，RAG 已降级为关键词检索"
+                          content="embedding 服务未启用或调用失败，当前通过关键词 LIKE 匹配检索知识库。请在「Agent 配置中心 → 模型配置」中检查 Embedding 配置。"
+                          color="#e5404e"
+                          bg="#fdecee"
+                        />
+                      )}
                       {/* RAG 命中内容（可折叠） */}
                       {ctx.ragContext && ctx.ragContext.trim() && (
                         <ContextContentBlock
-                          label={`RAG 知识库命中 (${ctx.ragChunks} 条, ${ctx.ragMs}ms)`}
+                          label={`RAG 知识库命中 (${ctx.ragChunks} 条, ${ctx.ragMs}ms)${ctx.ragDegraded ? ' · 关键词' : ' · 向量'}`}
                           content={ctx.ragContext}
-                          color="#d46b08"
-                          bg="#fff7e6"
+                          color={ctx.ragDegraded ? '#e5404e' : '#d46b08'}
+                          bg={ctx.ragDegraded ? '#fdecee' : '#fff7e6'}
                         />
                       )}
                       {/* 节点知识库内容（可折叠） */}
