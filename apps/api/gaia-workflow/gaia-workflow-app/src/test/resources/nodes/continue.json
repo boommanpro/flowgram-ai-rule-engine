@@ -1,0 +1,6 @@
+{
+  "id": "continue_0",
+  "type": "continue",
+  "meta": { "position": { "x": 800, "y": 180 } },
+  "data": { "title": "跳过本次循环" }
+}

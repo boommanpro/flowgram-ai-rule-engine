@@ -1,0 +1,17 @@
+{
+  "id": "llm_0",
+  "type": "llm",
+  "meta": { "position": { "x": 500, "y": 180 } },
+  "data": {
+    "title": "LLM调用",
+    "inputsValues": {
+      "modelName": { "type": "constant", "content": "qwen/qwen3-4b-2507" },
+      "apiKey": { "type": "constant", "content": "sk-test-key" },
+      "apiHost": { "type": "constant", "content": "http://localhost:11434/v1" },
+      "temperature": { "type": "constant", "content": "0.5" },
+      "systemPrompt": { "type": "constant", "content": "You are a helpful assistant." },
+      "prompt": { "type": "ref", "content": ["start_0", "query"] }
+    },
+    "timeout": { "timeout": 10000, "retryTimes": 0 }
+  }
+}

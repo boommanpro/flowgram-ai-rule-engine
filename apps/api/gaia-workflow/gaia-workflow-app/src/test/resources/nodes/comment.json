@@ -1,0 +1,10 @@
+{
+  "id": "comment_0",
+  "type": "comment",
+  "meta": { "position": { "x": 300, "y": 400 } },
+  "data": {
+    "title": "评论节点",
+    "size": { "width": 240, "height": 100 },
+    "note": "此分支用于处理默认情况"
+  }
+}

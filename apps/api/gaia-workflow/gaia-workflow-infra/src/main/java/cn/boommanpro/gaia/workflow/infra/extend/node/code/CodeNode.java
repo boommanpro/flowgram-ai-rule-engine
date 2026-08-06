@@ -18,7 +18,7 @@ public class CodeNode extends BaseNode {
 
     @Override
     public NodeTypeEnum getNodeType() {
-        return  NodeTypeEnum.CONDITION;
+        return NodeTypeEnum.CODE;
     }
 
     @Override

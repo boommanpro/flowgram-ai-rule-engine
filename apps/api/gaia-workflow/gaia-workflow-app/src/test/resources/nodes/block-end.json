@@ -1,0 +1,6 @@
+{
+  "id": "block_end_0",
+  "type": "block-end",
+  "meta": { "position": { "x": 800, "y": 180 } },
+  "data": { "title": "块结束" }
+}

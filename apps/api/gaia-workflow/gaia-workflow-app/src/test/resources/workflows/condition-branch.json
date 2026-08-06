@@ -1,0 +1,67 @@
+{
+  "nodes": [
+    {
+      "id": "start_0",
+      "type": "start",
+      "meta": { "position": { "x": 180, "y": 180 } },
+      "data": {
+        "title": "开始",
+        "outputs": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string", "default": "Hello Flow." }
+          }
+        }
+      }
+    },
+    {
+      "id": "condition_0",
+      "type": "condition",
+      "meta": { "position": { "x": 460, "y": 180 } },
+      "data": {
+        "title": "条件",
+        "conditions": [
+          {
+            "key": "if_match",
+            "value": {
+              "type": "expression",
+              "content": "",
+              "left": { "type": "ref", "content": ["start_0", "query"] },
+              "operator": "eq",
+              "right": { "type": "constant", "content": "Hello Flow.", "schema": { "type": "string", "extra": { "weak": true } } }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "end_match",
+      "type": "end",
+      "meta": { "position": { "x": 760, "y": 80 } },
+      "data": {
+        "title": "匹配结束",
+        "inputsValues": {
+          "output": { "type": "constant", "content": "matched" }
+        },
+        "inputs": { "type": "object", "properties": { "output": { "type": "string" } } }
+      }
+    },
+    {
+      "id": "end_else",
+      "type": "end",
+      "meta": { "position": { "x": 760, "y": 280 } },
+      "data": {
+        "title": "默认结束",
+        "inputsValues": {
+          "output": { "type": "constant", "content": "else" }
+        },
+        "inputs": { "type": "object", "properties": { "output": { "type": "string" } } }
+      }
+    }
+  ],
+  "edges": [
+    { "sourceNodeID": "start_0", "targetNodeID": "condition_0" },
+    { "sourceNodeID": "condition_0", "targetNodeID": "end_match", "sourcePortID": "if_match" },
+    { "sourceNodeID": "condition_0", "targetNodeID": "end_else", "sourcePortID": "else" }
+  ]
+}

@@ -149,6 +149,9 @@ function handleEvent(
     case 'context_loaded':
       handlers.onContextLoaded?.(data);
       break;
+    case 'token_warning':
+      handlers.onTokenWarning?.(data);
+      break;
     case 'subagent_tool_call':
       handlers.onSubagentToolCall?.(data);
       break;

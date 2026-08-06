@@ -71,4 +71,31 @@ public class AgentSessionController {
                 .eq("session_key", sessionKey)
                 .orderByAsc("id"));
     }
+
+    /**
+     * 保存会话的调试信息到 DB
+     */
+    @PutMapping("/{sessionKey}/debug")
+    public boolean saveDebugData(@PathVariable String sessionKey,
+                                  @RequestBody java.util.Map<String, Object> body) {
+        AgentSession session = sessionService.getOne(
+            new QueryWrapper<AgentSession>().eq("session_key", sessionKey));
+        if (session == null) {
+            return false;
+        }
+        Object data = body.get("debugData");
+        session.setDebugData(data != null ? data.toString() : null);
+        session.setUpdatedAt(LocalDateTime.now());
+        return sessionService.updateById(session);
+    }
+
+    /**
+     * 加载会话的调试信息
+     */
+    @GetMapping("/{sessionKey}/debug")
+    public String getDebugData(@PathVariable String sessionKey) {
+        AgentSession session = sessionService.getOne(
+            new QueryWrapper<AgentSession>().eq("session_key", sessionKey));
+        return session != null ? session.getDebugData() : null;
+    }
 }

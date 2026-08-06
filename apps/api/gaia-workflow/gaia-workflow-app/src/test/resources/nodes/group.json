@@ -1,0 +1,6 @@
+{
+  "id": "group_0",
+  "type": "group",
+  "meta": { "position": { "x": 300, "y": 100 } },
+  "data": { "title": "分组节点", "name": "处理组", "color": "#5c6b77" }
+}

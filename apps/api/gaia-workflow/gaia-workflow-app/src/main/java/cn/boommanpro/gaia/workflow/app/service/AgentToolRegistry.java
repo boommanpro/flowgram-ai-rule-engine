@@ -108,12 +108,40 @@ public class AgentToolRegistry {
     }
 
     /**
+     * 旧版 21 个独立工具名（迁移检测用）
+     */
+    private static final String[] OLD_TOOL_NAMES = {
+        "goHome", "goAdmin", "goReleases", "goEditor", "goTemplateEditor",
+        "listWorkflows", "listTemplates", "listLogs", "getWorkflowDetail", "getNodeDetail",
+        "createWorkflow", "createTemplate", "saveWorkflow", "deleteWorkflow",
+        "addNode", "updateNode", "deleteNode", "connect", "disconnect", "autoLayout"
+    };
+
+    /**
      * 从数据库加载工具定义
      *
      * @param allowSeed 表为空时是否自动建种（首次启动允许，热刷新不允许）
      */
     private void loadFromDatabase(boolean allowSeed) {
         try {
+            // 1. 迁移检测：删除所有旧版独立工具（仅删除旧工具名，不影响新复合工具）
+            if (allowSeed) {
+                int deleted = 0;
+                for (String oldName : OLD_TOOL_NAMES) {
+                    long cnt = toolDefinitionService.count(
+                        new QueryWrapper<AgentToolDefinition>().eq("tool_name", oldName));
+                    if (cnt > 0) {
+                        toolDefinitionService.remove(
+                            new QueryWrapper<AgentToolDefinition>().eq("tool_name", oldName));
+                        deleted += cnt;
+                    }
+                }
+                if (deleted > 0) {
+                    log.info("Migrated: removed {} old individual tool definitions", deleted);
+                }
+            }
+
+            // 2. 表为空时建种
             long total = toolDefinitionService.count();
             if (total == 0) {
                 if (allowSeed) {
@@ -122,6 +150,8 @@ public class AgentToolRegistry {
                     log.warn("Refresh skipped seeding: agent_tool_definition table is empty");
                 }
             }
+
+            // 3. 加载启用的工具定义
             List<AgentToolDefinition> enabled = toolDefinitionService.list(
                 new QueryWrapper<AgentToolDefinition>()
                     .eq("enabled", 1)
@@ -337,29 +367,13 @@ public class AgentToolRegistry {
             return "other";
         }
         switch (toolName) {
-            case "goHome":
-            case "goAdmin":
-            case "goReleases":
-            case "goEditor":
-            case "goTemplateEditor":
+            case "navigate":
                 return "navigation";
-            case "listWorkflows":
-            case "listTemplates":
-            case "listLogs":
-            case "getWorkflowDetail":
-            case "getNodeDetail":
+            case "query":
                 return "query";
-            case "createWorkflow":
-            case "createTemplate":
-            case "saveWorkflow":
-            case "deleteWorkflow":
+            case "manage":
                 return "write";
-            case "addNode":
-            case "updateNode":
-            case "deleteNode":
-            case "connect":
-            case "disconnect":
-            case "autoLayout":
+            case "canvas":
                 return "canvas";
             case "createPlan":
                 return "plan";
@@ -385,23 +399,11 @@ public class AgentToolRegistry {
 
     private Map<String, String> buildDefaultPolicies() {
         Map<String, String> policies = new HashMap<>();
-        // 导航类 - 默认自动执行
-        for (String a : new String[]{"goHome", "goAdmin", "goReleases", "goEditor", "goTemplateEditor"}) {
-            policies.put(a, "always");
-        }
-        // 查询类 - 默认自动执行
-        for (String a : new String[]{"listWorkflows", "listTemplates", "listLogs", "getWorkflowDetail", "getNodeDetail"}) {
-            policies.put(a, "always");
-        }
-        // 写操作类 - 默认需确认
-        for (String a : new String[]{"createWorkflow", "createTemplate", "saveWorkflow", "deleteWorkflow"}) {
-            policies.put(a, "confirm");
-        }
-        // 画布类 - 默认需确认
-        for (String a : new String[]{"addNode", "updateNode", "deleteNode", "connect", "disconnect", "autoLayout"}) {
-            policies.put(a, "confirm");
-        }
-        // Plan 类 - 默认自动执行
+        // 复合工具策略
+        policies.put("navigate", "always");
+        policies.put("query", "always");
+        policies.put("manage", "confirm");
+        policies.put("canvas", "confirm");
         policies.put("createPlan", "always");
         return policies;
     }
@@ -409,87 +411,54 @@ public class AgentToolRegistry {
     private JSONArray buildToolsSchema() {
         JSONArray tools = new JSONArray();
 
-        // ===== 导航类 =====
-        tools.add(func("goHome", "跳转到首页", obj(new String[0], new JSONObject[0])));
-        tools.add(func("goAdmin", "跳转到管理后台，可选指定标签页", obj(
-            new String[]{"tab"}, new JSONObject[]{str("tab", "标签页：workflows 或 templates", null)}
-        )));
-        tools.add(func("goReleases", "跳转到更新记录页", obj(new String[0], new JSONObject[0])));
-        tools.add(func("goEditor", "跳转到工作流编辑器，可选指定 workflowCode", obj(
-            new String[]{"workflowCode"}, new JSONObject[]{str("workflowCode", "工作流编码", null)}
-        )));
-        tools.add(func("goTemplateEditor", "跳转到模板编辑器，需指定 templateCode", obj(
-            new String[]{"templateCode"}, new JSONObject[]{str("templateCode", "模板编码", null)}
+        // ===== 1. 导航复合工具 =====
+        tools.add(func("navigate", "页面导航。支持跳转到首页、管理后台、更新记录、工作流编辑器、模板编辑器", obj(
+            new String[]{"target"}, new JSONObject[]{
+                str("target", "导航目标", enumVal("home", "admin", "releases", "editor", "templateEditor")),
+                str("workflowCode", "工作流编码（target=editor时使用）", null),
+                str("templateCode", "模板编码（target=templateEditor时使用）", null),
+                str("tab", "管理后台标签页：workflows 或 templates（target=admin时使用）", null)
+            }
         )));
 
-        // ===== 查询类 =====
-        tools.add(func("listWorkflows", "获取所有工作流列表", obj(new String[0], new JSONObject[0])));
-        tools.add(func("listTemplates", "获取所有模板列表", obj(new String[0], new JSONObject[0])));
-        tools.add(func("listLogs", "获取指定工作流的调用日志", obj(
-            new String[]{"workflowCode"}, new JSONObject[]{str("workflowCode", "工作流编码", null)}
-        )));
-        tools.add(func("getWorkflowDetail", "获取工作流详情含画布数据", obj(
-            new String[]{"workflowCode"}, new JSONObject[]{str("workflowCode", "工作流编码", null)}
-        )));
-        tools.add(func("getNodeDetail", "获取画布中指定节点的详细数据", obj(
-            new String[]{"nodeId"}, new JSONObject[]{str("nodeId", "节点ID", null)}
+        // ===== 2. 查询复合工具 =====
+        tools.add(func("query", "查询资源。支持工作流列表、模板列表、调用日志、工作流详情、节点详情、可用变量", obj(
+            new String[]{"resource"}, new JSONObject[]{
+                str("resource", "查询的资源类型", enumVal("workflows", "templates", "logs", "workflowDetail", "nodeDetail", "availableVariables")),
+                str("workflowCode", "工作流编码（resource=logs或workflowDetail时使用）", null),
+                str("nodeId", "节点ID（resource=nodeDetail时使用）", null)
+            }
         )));
 
-        // ===== 写操作类 =====
-        tools.add(func("createWorkflow", "创建新工作流", obj(
-            new String[]{"name"}, new JSONObject[]{
-                str("name", "工作流名称", null),
-                str("desc", "工作流描述", null),
-                str("templateCode", "基于模板创建（可选）", null)
+        // ===== 3. 管理复合工具 =====
+        tools.add(func("manage", "管理资源。支持创建工作流、创建模板、保存工作流、删除工作流", obj(
+            new String[]{"action"}, new JSONObject[]{
+                str("action", "管理操作", enumVal("createWorkflow", "createTemplate", "saveWorkflow", "deleteWorkflow")),
+                str("name", "名称（创建时使用）", null),
+                str("desc", "描述（创建时使用）", null),
+                str("workflowCode", "工作流编码（saveWorkflow时使用）", null),
+                str("templateCode", "模板编码（createWorkflow时可选使用）", null),
+                str("id", "工作流ID（deleteWorkflow时使用）", null)
             }
-        )));
-        tools.add(func("createTemplate", "创建新模板", obj(
-            new String[]{"name"}, new JSONObject[]{
-                str("name", "模板名称", null),
-                str("desc", "模板描述", null)
-            }
-        )));
-        tools.add(func("saveWorkflow", "保存当前画布到后端", obj(
-            new String[]{"workflowCode"}, new JSONObject[]{str("workflowCode", "工作流编码", null)}
-        )));
-        tools.add(func("deleteWorkflow", "删除工作流", obj(
-            new String[]{"id"}, new JSONObject[]{str("id", "工作流ID", null)}
         )));
 
-        // ===== 画布类 =====
-        tools.add(func("addNode", "在画布上添加节点", obj(
-            new String[]{"type"}, new JSONObject[]{
-                str("type", "节点类型", enumVal("start", "end", "llm", "code", "http", "condition", "branches", "loop", "variable", "string-format", "assignee", "comment")),
-                str("afterNodeId", "在此节点之后添加（可选）", null),
-                str("title", "节点标题（可选）", null),
-                objProp("data", "节点数据，只填关键字段，其余由系统补默认值")
+        // ===== 4. 画布复合工具 =====
+        tools.add(func("canvas", "画布操作。支持添加节点、更新节点、删除节点、连接节点、断开连接、自动布局、运行工作流、运行单节点", obj(
+            new String[]{"action"}, new JSONObject[]{
+                str("action", "画布操作类型", enumVal("addNode", "updateNode", "deleteNode", "connect", "disconnect", "autoLayout", "runWorkflow", "runNode")),
+                str("type", "节点类型（action=addNode时使用）", enumVal("start", "end", "llm", "code", "http", "condition", "branches", "loop", "variable", "string-format", "assignee", "comment")),
+                str("nodeId", "节点ID（updateNode/deleteNode/runNode时使用）", null),
+                str("afterNodeId", "在此节点之后添加（action=addNode时可选使用）", null),
+                str("title", "节点标题（action=addNode时可选使用）", null),
+                objProp("data", "节点数据（addNode/updateNode时使用，只填关键字段）"),
+                str("from", "源节点ID（connect/disconnect时使用）", null),
+                str("to", "目标节点ID（connect/disconnect时使用）", null),
+                str("fromPort", "源端口（connect时可选，用于分支/条件节点）", null),
+                objProp("inputs", "运行输入参数（runWorkflow/runNode时使用）")
             }
         )));
-        tools.add(func("updateNode", "更新画布中已有节点的数据", obj(
-            new String[]{"nodeId", "data"}, new JSONObject[]{
-                str("nodeId", "节点ID", null),
-                objProp("data", "要更新的节点数据字段（patch）")
-            }
-        )));
-        tools.add(func("deleteNode", "删除画布中的节点", obj(
-            new String[]{"nodeId"}, new JSONObject[]{str("nodeId", "节点ID", null)}
-        )));
-        tools.add(func("connect", "连接两个节点", obj(
-            new String[]{"from", "to"}, new JSONObject[]{
-                str("from", "源节点ID", null),
-                str("to", "目标节点ID", null),
-                str("fromPort", "源端口（可选，用于分支/条件节点）", null)
-            }
-        )));
-        tools.add(func("disconnect", "断开两个节点的连接", obj(
-            new String[]{"from", "to"}, new JSONObject[]{
-                str("from", "源节点ID", null),
-                str("to", "目标节点ID", null)
-            }
-        )));
-        tools.add(func("autoLayout", "自动排列画布节点", obj(new String[0], new JSONObject[0])));
 
-        // ===== Plan 类 =====
+        // ===== 5. 执行计划 =====
         tools.add(func("createPlan", "创建多步骤执行计划，用于复杂任务（如创建完整 workflow）", obj(
             new String[]{"steps"}, new JSONObject[]{
                 arrProp("steps", "执行步骤数组",

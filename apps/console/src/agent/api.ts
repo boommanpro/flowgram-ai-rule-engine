@@ -37,6 +37,15 @@ export const agentApi = {
   getMessages: (sessionKey: string) =>
     request<AgentMessage[]>(`/agent/session/${sessionKey}/messages`),
 
+  // 调试信息持久化
+  saveDebugData: (sessionKey: string, debugData: string) =>
+    request<boolean>(`/agent/session/${sessionKey}/debug`, {
+      method: 'PUT',
+      body: JSON.stringify({ debugData }),
+    }),
+  getDebugData: (sessionKey: string) =>
+    request<string>(`/agent/session/${sessionKey}/debug`),
+
   // 权限管理
   getPermissions: (sessionKey: string) =>
     request<Record<string, PermissionPolicy>>(`/agent/permission/${sessionKey}`),

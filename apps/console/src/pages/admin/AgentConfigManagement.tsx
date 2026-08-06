@@ -1,6 +1,6 @@
 /**
  * AgentConfigManagement — Agent 配置中心
- * 6 个 Tab：模型配置 / 提示词 & 知识库 / 工具定义 / 权限设置 / RAG 知识库 / 知识图谱
+ * 5 个 Tab：模型配置 / 提示词 & 知识库 / 工具定义 / 权限设置 / 知识图谱
  */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
@@ -232,6 +232,10 @@ interface ConfigItem {
   version?: number;
   createdAt?: string;
   updatedAt?: string;
+  /** RAG 知识块专用字段 */
+  source?: string;
+  metadata?: any;
+  language?: string;
 }
 
 /* ================================================================
@@ -506,43 +510,33 @@ const ToolDefinitionTab: React.FC = () => {
 
 const PERMISSION_GROUPS: { title: string; actions: { name: string; desc: string }[] }[] = [
   {
-    title: '导航类',
+    title: '导航',
     actions: [
-      { name: 'goHome', desc: '前往首页' },
-      { name: 'goAdmin', desc: '前往管理后台' },
-      { name: 'goReleases', desc: '前往发布列表' },
-      { name: 'goEditor', desc: '前往工作流编辑器' },
-      { name: 'goTemplateEditor', desc: '前往模板编辑器' },
+      { name: 'navigate', desc: '页面导航（首页/后台/编辑器等）' },
     ],
   },
   {
-    title: '查询类',
+    title: '查询',
     actions: [
-      { name: 'listWorkflows', desc: '查询工作流列表' },
-      { name: 'listTemplates', desc: '查询模板列表' },
-      { name: 'listLogs', desc: '查询执行日志' },
-      { name: 'getWorkflowDetail', desc: '查询工作流详情' },
-      { name: 'getNodeDetail', desc: '查询节点详情' },
+      { name: 'query', desc: '查询工作流/模板/日志/节点详情' },
     ],
   },
   {
-    title: '写操作类',
+    title: '管理',
     actions: [
-      { name: 'createWorkflow', desc: '创建工作流' },
-      { name: 'createTemplate', desc: '创建模板' },
-      { name: 'saveWorkflow', desc: '保存工作流' },
-      { name: 'deleteWorkflow', desc: '删除工作流' },
+      { name: 'manage', desc: '创建/保存/删除工作流和模板' },
     ],
   },
   {
-    title: '画布类',
+    title: '画布',
     actions: [
-      { name: 'addNode', desc: '新增节点' },
-      { name: 'updateNode', desc: '更新节点' },
-      { name: 'deleteNode', desc: '删除节点' },
-      { name: 'connect', desc: '连接节点' },
-      { name: 'disconnect', desc: '断开连接' },
-      { name: 'autoLayout', desc: '自动布局' },
+      { name: 'canvas', desc: '节点增删改/连线/布局/运行' },
+    ],
+  },
+  {
+    title: '计划',
+    actions: [
+      { name: 'createPlan', desc: '创建多步骤执行计划' },
     ],
   },
 ];
@@ -735,309 +729,6 @@ const PermissionTab: React.FC = () => {
           </div>
         ))
       )}
-    </div>
-  );
-};
-
-/* ================================================================
- * RagKnowledgeTab — RAG 知识库
- * ================================================================ */
-
-interface KnowledgeItem {
-  id?: number;
-  title: string;
-  content?: string;
-  source?: string;
-  metadata?: any;
-  embedding?: string;
-  language?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-const RagKnowledgeTab: React.FC = () => {
-  const lang = useLanguage();
-  const [loading, setLoading] = useState(false);
-  const [list, setList] = useState<KnowledgeItem[]>([]);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editing, setEditing] = useState<KnowledgeItem | null>(null);
-  const [form, setForm] = useState<KnowledgeItem>({ title: '', content: '', source: '', metadata: '' });
-  const [saving, setSaving] = useState(false);
-  const [aiVisible, setAiVisible] = useState(false);
-  const [searchVisible, setSearchVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searching, setSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await agentApi.listKnowledge();
-      setList(data || []);
-    } catch (e) {
-      Toast.error(`加载失败: ${(e as Error).message}`);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  // 按当前系统语言过滤 RAG 知识库
-  const filteredList = useMemo(() => {
-    const langCode = lang === 'en' ? 'en' : 'zh';
-    return list.filter((item) => (item.language || 'zh') === langCode);
-  }, [list, lang]);
-
-  const openCreate = () => {
-    setEditing(null);
-    setForm({ title: '', content: '', source: '', metadata: '{}', language: lang === 'en' ? 'en' : 'zh' });
-    setModalVisible(true);
-  };
-
-  const openEdit = (item: KnowledgeItem) => {
-    setEditing(item);
-    setForm({ ...item, metadata: jsonStringify(item.metadata) });
-    setModalVisible(true);
-  };
-
-  const handleSave = useCallback(async () => {
-    if (!form.title) {
-      Toast.warning('请填写标题');
-      return;
-    }
-    const parsedMeta = tryParseJson(form.metadata);
-    if (form.metadata && parsedMeta === null) {
-      Toast.error('metadata 不是合法的 JSON');
-      return;
-    }
-    setSaving(true);
-    try {
-      await agentApi.saveKnowledge({
-        ...form,
-        metadata: parsedMeta || {},
-      });
-      Toast.success('保存成功');
-      setModalVisible(false);
-      void load();
-    } catch (e) {
-      Toast.error(`保存失败: ${(e as Error).message}`);
-    } finally {
-      setSaving(false);
-    }
-  }, [form, load]);
-
-  const handleDelete = useCallback(async (id: number) => {
-    Modal.confirm({
-      title: '确认删除',
-      content: `确定删除该知识块吗？`,
-      onOk: async () => {
-        try {
-          await agentApi.deleteKnowledge(id);
-          Toast.success('删除成功');
-          void load();
-        } catch (e) {
-          Toast.error(`删除失败: ${(e as Error).message}`);
-        }
-      },
-    });
-  }, [load]);
-
-  const handleReembed = useCallback(async () => {
-    Modal.confirm({
-      title: '重新 Embedding',
-      content: '将对所有知识块重新生成向量，可能耗时较长。确认继续？',
-      onOk: async () => {
-        try {
-          await agentApi.reembedAll();
-          Toast.success('已触发重新 Embedding');
-        } catch (e) {
-          Toast.error(`失败: ${(e as Error).message}`);
-        }
-      },
-    });
-  }, []);
-
-  const handleSearch = useCallback(async () => {
-    if (!searchQuery.trim()) {
-      Toast.warning('请输入检索内容');
-      return;
-    }
-    setSearching(true);
-    setSearchResults([]);
-    try {
-      const data = await agentApi.searchKnowledge(searchQuery, 5, lang === 'en' ? 'en' : 'zh');
-      setSearchResults(data || []);
-    } catch (e) {
-      Toast.error(`检索失败: ${(e as Error).message}`);
-    } finally {
-      setSearching(false);
-    }
-  }, [searchQuery, lang]);
-
-  const columns: ColumnProps<KnowledgeItem>[] = [
-    { title: '标题', dataIndex: 'title', key: 'title', width: 220 },
-    { title: '来源', dataIndex: 'source', key: 'source', width: 160 },
-    {
-      title: '创建时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 160,
-      render: (text: string) => formatDateTime(text),
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      width: 180,
-      render: (_text: any, record: KnowledgeItem) => (
-        <div style={{ display: 'flex', gap: 6 }}>
-          <Button size="small" theme="borderless" style={{ color: ACCENT }} onClick={() => openEdit(record)}>
-            编辑
-          </Button>
-          <Button size="small" theme="borderless" type="danger" onClick={() => handleDelete(record.id!)}>
-            删除
-          </Button>
-        </div>
-      ),
-    },
-  ];
-
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <Button theme="solid" style={{ background: ACCENT }} onClick={openCreate}>
-          新建
-        </Button>
-        <Button onClick={() => setAiVisible(true)}>{t('agent.config.aiGenerate')}</Button>
-        <Button onClick={() => setSearchVisible(true)}>{t('agent.config.retrievalPreview')}</Button>
-        <Button onClick={handleReembed}>{t('agent.config.reembed')}</Button>
-        <Button onClick={() => void load()}>{t('agent.config.refresh')}</Button>
-      </div>
-
-      <Table
-        columns={columns}
-        dataSource={filteredList}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 10 }}
-      />
-
-      <Modal
-        title={editing ? '编辑知识块' : '新建知识块'}
-        visible={modalVisible}
-        onCancel={() => setModalVisible(false)}
-        footer={null}
-        width={680}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>{t('common.title')}</Typography.Text>
-            <Input
-              value={form.title}
-              onChange={(v) => setForm({ ...form, title: v })}
-              style={{ marginTop: 6 }}
-            />
-          </div>
-          <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>{t('common.source')}</Typography.Text>
-            <Input
-              value={form.source}
-              onChange={(v) => setForm({ ...form, source: v })}
-              style={{ marginTop: 6 }}
-            />
-          </div>
-          <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>{t('common.content')}</Typography.Text>
-            <TextArea
-              value={form.content}
-              onChange={(v) => setForm({ ...form, content: v })}
-              autosize={{ minRows: 6, maxRows: 18 }}
-              style={{ marginTop: 6 }}
-            />
-          </div>
-          <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>Metadata (JSON)</Typography.Text>
-            <TextArea
-              value={form.metadata as any}
-              onChange={(v) => setForm({ ...form, metadata: v })}
-              autosize={{ minRows: 3, maxRows: 8 }}
-              style={{ marginTop: 6, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}
-            />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <Button onClick={() => setModalVisible(false)}>{t('common.cancel')}</Button>
-            <Button theme="solid" style={{ background: ACCENT }} loading={saving} onClick={handleSave}>
-              保存
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      <AiGenModal
-        visible={aiVisible}
-        onClose={() => setAiVisible(false)}
-        defaultPrompt="请生成一段 Agent 知识库文档内容，用于辅助工作流编辑器中的用户。内容应清晰、结构化，涵盖常见场景与最佳实践。"
-        onApply={(content) => {
-          setEditing(null);
-          setForm({ title: '', content, source: 'ai-generated', metadata: '{}' });
-          setModalVisible(true);
-        }}
-      />
-
-      {/* Search preview modal */}
-      <Modal
-        title="检索预览"
-        visible={searchVisible}
-        onCancel={() => setSearchVisible(false)}
-        footer={null}
-        width={720}
-      >
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <Input
-            value={searchQuery}
-            onChange={(v) => setSearchQuery(v)}
-            placeholder="输入检索内容…"
-            style={{ flex: 1 }}
-            onEnterPress={() => void handleSearch()}
-          />
-          <Button theme="solid" style={{ background: ACCENT }} loading={searching} onClick={() => void handleSearch()}>
-            检索
-          </Button>
-        </div>
-        {searching ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
-            <Spin />
-          </div>
-        ) : searchResults.length === 0 ? (
-          <div style={{ color: '#999', padding: 16, textAlign: 'center' }}>{t('agent.config.noResult')}</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {searchResults.map((r, idx) => (
-              <div
-                key={r.id ?? idx}
-                style={{
-                  border: '1px solid #eee',
-                  borderRadius: 8,
-                  padding: 10,
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>{r.title || `#${idx + 1}`}</span>
-                  {r.score !== undefined && (
-                    <Tag color="blue" size="small">score: {Number(r.score).toFixed(3)}</Tag>
-                  )}
-                </div>
-                <div style={{ fontSize: 12, color: '#666', whiteSpace: 'pre-wrap' }}>
-                  {(r.content || '').slice(0, 300)}
-                  {(r.content || '').length > 300 ? '…' : ''}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </Modal>
     </div>
   );
 };
@@ -1791,6 +1482,7 @@ const PromptEditorTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [promptList, setPromptList] = useState<ConfigItem[]>([]);
   const [knowledgeList, setKnowledgeList] = useState<ConfigItem[]>([]);
+  const [ragList, setRagList] = useState<ConfigItem[]>([]);
   const [selectedKey, setSelectedKey] = useState<string>('');
   const [editContent, setEditContent] = useState<string>('');
   const [saving, setSaving] = useState(false);
@@ -1799,16 +1491,35 @@ const PromptEditorTab: React.FC = () => {
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [historyKey, setHistoryKey] = useState('');
   const lineNumbersRef = useRef<HTMLDivElement | null>(null);
+  // RAG 工具栏状态
+  const [aiVisible, setAiVisible] = useState(false);
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [prompts, knowledge] = await Promise.all([
+      const [prompts, knowledge, rags] = await Promise.all([
         agentApi.listConfigs('system_prompt'),
         agentApi.listConfigs('node_knowledge'),
+        agentApi.listKnowledge(),
       ]);
       setPromptList(prompts || []);
       setKnowledgeList(knowledge || []);
+      // 将 RAG 知识块转换为 ConfigItem 格式以便统一管理
+      const ragItems: ConfigItem[] = (rags || []).map((r: any) => ({
+        id: r.id,
+        configKey: `rag_${r.id}`,
+        configType: 'rag_chunk',
+        title: r.title,
+        content: r.content,
+        source: r.source,
+        metadata: r.metadata,
+        language: r.language || 'zh',
+      }));
+      setRagList(ragItems);
     } catch (e) {
       Toast.error(`加载失败: ${(e as Error).message}`);
     } finally {
@@ -1833,9 +1544,15 @@ const PromptEditorTab: React.FC = () => {
     );
   }, [knowledgeList, lang]);
 
+  // RAG 知识块按 language 字段过滤
+  const filteredRag = useMemo(() => {
+    const langCode = lang === 'en' ? 'en' : 'zh';
+    return ragList.filter((item) => (item.language || 'zh') === langCode);
+  }, [ragList, lang]);
+
   // 语言切换时，如果当前选中的条目不属于当前语言，自动选中第一个匹配条目
   useEffect(() => {
-    const allFiltered = [...filteredPrompts, ...filteredKnowledge];
+    const allFiltered = [...filteredPrompts, ...filteredKnowledge, ...filteredRag];
     if (allFiltered.length === 0) {
       setSelectedKey('');
       setEditContent('');
@@ -1843,28 +1560,28 @@ const PromptEditorTab: React.FC = () => {
     }
     const currentBelongsToLang = allFiltered.some((item) => item.configKey === selectedKey);
     if (!currentBelongsToLang) {
-      const first = filteredPrompts[0] || filteredKnowledge[0];
+      const first = filteredPrompts[0] || filteredKnowledge[0] || filteredRag[0];
       if (first) {
         setSelectedKey(first.configKey);
         setEditContent(first.content || '');
       }
     }
-  }, [lang, filteredPrompts, filteredKnowledge, selectedKey]);
+  }, [lang, filteredPrompts, filteredKnowledge, filteredRag, selectedKey]);
 
   // 列表加载完成后，自动选中第一个项目
   useEffect(() => {
-    if (!selectedKey && (filteredPrompts.length > 0 || filteredKnowledge.length > 0)) {
-      const first = filteredPrompts[0] || filteredKnowledge[0];
+    if (!selectedKey && (filteredPrompts.length > 0 || filteredKnowledge.length > 0 || filteredRag.length > 0)) {
+      const first = filteredPrompts[0] || filteredKnowledge[0] || filteredRag[0];
       if (first) {
         setSelectedKey(first.configKey);
         setEditContent(first.content || '');
       }
     }
-  }, [selectedKey, filteredPrompts, filteredKnowledge]);
+  }, [selectedKey, filteredPrompts, filteredKnowledge, filteredRag]);
 
   const selectedItem = useMemo(() => {
-    return [...filteredPrompts, ...filteredKnowledge].find((item) => item.configKey === selectedKey);
-  }, [filteredPrompts, filteredKnowledge, selectedKey]);
+    return [...filteredPrompts, ...filteredKnowledge, ...filteredRag].find((item) => item.configKey === selectedKey);
+  }, [filteredPrompts, filteredKnowledge, filteredRag, selectedKey]);
 
   const handleSelect = useCallback((item: ConfigItem) => {
     setSelectedKey(item.configKey);
@@ -1875,10 +1592,22 @@ const PromptEditorTab: React.FC = () => {
     if (!selectedItem) return;
     setSaving(true);
     try {
-      await agentApi.saveConfig({
-        ...selectedItem,
-        content: editContent,
-      });
+      if (selectedItem.configType === 'rag_chunk') {
+        // RAG 知识块走 knowledge API
+        await agentApi.saveKnowledge({
+          id: selectedItem.id,
+          title: selectedItem.title || '',
+          content: editContent,
+          source: selectedItem.source || '',
+          metadata: selectedItem.metadata || {},
+          language: selectedItem.language || (lang === 'en' ? 'en' : 'zh'),
+        });
+      } else {
+        await agentApi.saveConfig({
+          ...selectedItem,
+          content: editContent,
+        });
+      }
       Toast.success('保存成功');
       void load();
     } catch (e) {
@@ -1886,7 +1615,7 @@ const PromptEditorTab: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  }, [selectedItem, editContent, load]);
+  }, [selectedItem, editContent, load, lang]);
 
   const openHistory = useCallback(async () => {
     if (!selectedItem) return;
@@ -1917,16 +1646,37 @@ const PromptEditorTab: React.FC = () => {
 
   // 新建配置项
   const [createModalVisible, setCreateModalVisible] = useState(false);
-  const [createType, setCreateType] = useState<'system_prompt' | 'node_knowledge'>('system_prompt');
+  const [createType, setCreateType] = useState<'system_prompt' | 'node_knowledge' | 'rag_chunk'>('system_prompt');
   const [createForm, setCreateForm] = useState({ configKey: '', title: '', content: '' });
 
-  const openCreate = useCallback((type: 'system_prompt' | 'node_knowledge') => {
+  const openCreate = useCallback((type: 'system_prompt' | 'node_knowledge' | 'rag_chunk') => {
     setCreateType(type);
     setCreateForm({ configKey: '', title: '', content: '' });
     setCreateModalVisible(true);
   }, []);
 
   const handleCreate = useCallback(async () => {
+    if (createType === 'rag_chunk') {
+      if (!createForm.title) {
+        Toast.warning('请填写标题');
+        return;
+      }
+      try {
+        await agentApi.saveKnowledge({
+          title: createForm.title,
+          content: createForm.content,
+          source: 'manual',
+          metadata: {},
+          language: lang === 'en' ? 'en' : 'zh',
+        });
+        Toast.success('创建成功');
+        setCreateModalVisible(false);
+        void load();
+      } catch (e) {
+        Toast.error(`创建失败: ${(e as Error).message}`);
+      }
+      return;
+    }
     if (!createForm.configKey) {
       Toast.warning('请填写 configKey');
       return;
@@ -1945,7 +1695,7 @@ const PromptEditorTab: React.FC = () => {
     } catch (e) {
       Toast.error(`创建失败: ${(e as Error).message}`);
     }
-  }, [createForm, createType, load]);
+  }, [createForm, createType, load, lang]);
 
   // 重命名
   const [renameVisible, setRenameVisible] = useState(false);
@@ -1961,17 +1711,28 @@ const PromptEditorTab: React.FC = () => {
   const handleRename = useCallback(async () => {
     if (!renameItem) return;
     try {
-      await agentApi.saveConfig({
-        ...renameItem,
-        title: renameTitle,
-      });
+      if (renameItem.configType === 'rag_chunk') {
+        await agentApi.saveKnowledge({
+          id: renameItem.id,
+          title: renameTitle,
+          content: renameItem.content,
+          source: renameItem.source || '',
+          metadata: renameItem.metadata || {},
+          language: renameItem.language || (lang === 'en' ? 'en' : 'zh'),
+        });
+      } else {
+        await agentApi.saveConfig({
+          ...renameItem,
+          title: renameTitle,
+        });
+      }
       Toast.success('重命名成功');
       setRenameVisible(false);
       void load();
     } catch (e) {
       Toast.error(`重命名失败: ${(e as Error).message}`);
     }
-  }, [renameItem, renameTitle, load]);
+  }, [renameItem, renameTitle, load, lang]);
 
   // 删除
   const handleDelete = useCallback((item: ConfigItem) => {
@@ -1980,7 +1741,11 @@ const PromptEditorTab: React.FC = () => {
       content: `确定删除「${item.title || item.configKey}」吗？此操作不可恢复。`,
       onOk: async () => {
         try {
-          await agentApi.deleteConfig(item.configKey);
+          if (item.configType === 'rag_chunk' && item.id) {
+            await agentApi.deleteKnowledge(item.id);
+          } else {
+            await agentApi.deleteConfig(item.configKey);
+          }
           Toast.success('删除成功');
           if (selectedKey === item.configKey) {
             setSelectedKey('');
@@ -2002,24 +1767,71 @@ const PromptEditorTab: React.FC = () => {
 
   const lineCount = useMemo(() => Math.max(editContent.split('\n').length, 1), [editContent]);
 
-  const totalCount = promptList.length + knowledgeList.length;
+  // RAG: 重新 Embedding
+  const handleReembed = useCallback(async () => {
+    Modal.confirm({
+      title: '重新 Embedding',
+      content: '将对所有 RAG 知识块重新生成向量，可能耗时较长。确认继续？',
+      onOk: async () => {
+        try {
+          await agentApi.reembedAll();
+          Toast.success('已触发重新 Embedding');
+        } catch (e) {
+          Toast.error(`失败: ${(e as Error).message}`);
+        }
+      },
+    });
+  }, []);
+
+  // RAG: 检索预览
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim()) {
+      Toast.warning('请输入检索内容');
+      return;
+    }
+    setSearching(true);
+    setSearchResults([]);
+    try {
+      const data = await agentApi.searchKnowledge(searchQuery, 5, lang === 'en' ? 'en' : 'zh');
+      setSearchResults(data || []);
+    } catch (e) {
+      Toast.error(`检索失败: ${(e as Error).message}`);
+    } finally {
+      setSearching(false);
+    }
+  }, [searchQuery, lang]);
+
+  const totalCount = promptList.length + knowledgeList.length + ragList.length;
 
   return (
     <div>
+      {/* 顶部工具栏：AI 生成 / 检索预览 / 重新 Embedding / 刷新 */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+        <Button theme="solid" style={{ background: ACCENT }} onClick={() => setAiVisible(true)}>
+          {t('agent.config.aiGenerate')}
+        </Button>
+        <Button onClick={() => setSearchVisible(true)}>{t('agent.config.retrievalPreview')}</Button>
+        <Button onClick={handleReembed}>{t('agent.config.reembed')}</Button>
+        <Button onClick={() => void load()}>{t('agent.config.refresh')}</Button>
+        <span style={{ fontSize: 12, color: '#aaa', marginLeft: 'auto' }}>
+          {t('agent.config.promptGroup')}: {filteredPrompts.length} / {t('agent.config.knowledgeGroup')}: {filteredKnowledge.length} / {t('agent.config.ragKnowledgeGroup')}: {filteredRag.length}
+        </span>
+      </div>
+
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
           <Spin />
         </div>
       ) : totalCount === 0 ? (
         <div style={{ color: '#999', padding: 24, textAlign: 'center' }}>
-          暂无配置项，请先创建 system_prompt 或 node_knowledge 配置
+          暂无配置项，请先创建 system_prompt、node_knowledge 或 RAG 知识块
         </div>
       ) : (
         <div
           style={{
             display: 'flex',
-            height: 'calc(100vh - 240px)',
-            minHeight: 480,
+            height: 'calc(100vh - 300px)',
+            minHeight: 440,
             border: '1px solid #333',
             borderRadius: 6,
             overflow: 'hidden',
@@ -2050,6 +1862,15 @@ const PromptEditorTab: React.FC = () => {
               selectedKey={selectedKey}
               onSelect={handleSelect}
               onCreate={() => openCreate('node_knowledge')}
+              onRename={openRename}
+              onDelete={handleDelete}
+            />
+            <SidebarGroup
+              title={t('agent.config.ragKnowledgeGroup')}
+              items={filteredRag}
+              selectedKey={selectedKey}
+              onSelect={handleSelect}
+              onCreate={() => openCreate('rag_chunk')}
               onRename={openRename}
               onDelete={handleDelete}
             />
@@ -2228,22 +2049,24 @@ const PromptEditorTab: React.FC = () => {
 
       {/* 新建配置项 modal */}
       <Modal
-        title={`新建 — ${createType === 'system_prompt' ? '系统提示词' : '节点知识库'}`}
+        title={`新建 — ${createType === 'system_prompt' ? '系统提示词' : createType === 'node_knowledge' ? '节点知识库' : 'RAG 知识块'}`}
         visible={createModalVisible}
         onCancel={() => setCreateModalVisible(false)}
         footer={null}
         width={520}
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>{t('agent.config.configKey')}</Typography.Text>
-            <Input
-              value={createForm.configKey}
-              onChange={(v) => setCreateForm({ ...createForm, configKey: v })}
-              placeholder={createType === 'system_prompt' ? '如 system_prompt.custom' : '如 node_custom'}
-              style={{ marginTop: 6 }}
-            />
-          </div>
+          {createType !== 'rag_chunk' && (
+            <div>
+              <Typography.Text strong style={{ fontSize: 13 }}>{t('agent.config.configKey')}</Typography.Text>
+              <Input
+                value={createForm.configKey}
+                onChange={(v) => setCreateForm({ ...createForm, configKey: v })}
+                placeholder={createType === 'system_prompt' ? '如 system_prompt.custom' : '如 node_custom'}
+                style={{ marginTop: 6 }}
+              />
+            </div>
+          )}
           <div>
             <Typography.Text strong style={{ fontSize: 13 }}>{t('common.title')}</Typography.Text>
             <Input
@@ -2282,8 +2105,14 @@ const PromptEditorTab: React.FC = () => {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>ConfigKey</Typography.Text>
-            <Input value={renameItem?.configKey || ''} disabled style={{ marginTop: 6 }} />
+            <Typography.Text strong style={{ fontSize: 13 }}>
+              {renameItem?.configType === 'rag_chunk' ? t('common.title') : 'ConfigKey'}
+            </Typography.Text>
+            <Input
+              value={renameItem?.configType === 'rag_chunk' ? (renameItem?.title || '') : (renameItem?.configKey || '')}
+              disabled
+              style={{ marginTop: 6 }}
+            />
           </div>
           <div>
             <Typography.Text strong style={{ fontSize: 13 }}>{t('agent.config.newTitle')}</Typography.Text>
@@ -2301,6 +2130,72 @@ const PromptEditorTab: React.FC = () => {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* AI 生成 modal */}
+      <AiGenModal
+        visible={aiVisible}
+        onClose={() => setAiVisible(false)}
+        defaultPrompt="请生成一段 Agent 知识库文档内容，用于辅助工作流编辑器中的用户。内容应清晰、结构化，涵盖常见场景与最佳实践。"
+        onApply={(content) => {
+          // 生成完成后，打开新建 RAG 知识块弹窗并预填内容
+          setCreateType('rag_chunk');
+          setCreateForm({ configKey: '', title: '', content });
+          setCreateModalVisible(true);
+        }}
+      />
+
+      {/* 检索预览 modal */}
+      <Modal
+        title="检索预览"
+        visible={searchVisible}
+        onCancel={() => setSearchVisible(false)}
+        footer={null}
+        width={720}
+      >
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <Input
+            value={searchQuery}
+            onChange={(v) => setSearchQuery(v)}
+            placeholder="输入检索内容…"
+            style={{ flex: 1 }}
+            onEnterPress={() => void handleSearch()}
+          />
+          <Button theme="solid" style={{ background: ACCENT }} loading={searching} onClick={() => void handleSearch()}>
+            检索
+          </Button>
+        </div>
+        {searching ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
+            <Spin />
+          </div>
+        ) : searchResults.length === 0 ? (
+          <div style={{ color: '#999', padding: 16, textAlign: 'center' }}>{t('agent.config.noResult')}</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {searchResults.map((r, idx) => (
+              <div
+                key={r.id ?? idx}
+                style={{
+                  border: '1px solid #eee',
+                  borderRadius: 8,
+                  padding: 10,
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{r.title || `#${idx + 1}`}</span>
+                  {r.score !== undefined && (
+                    <Tag color="blue" size="small">score: {Number(r.score).toFixed(3)}</Tag>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: '#666', whiteSpace: 'pre-wrap' }}>
+                  {(r.content || '').slice(0, 300)}
+                  {(r.content || '').length > 300 ? '…' : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Modal>
     </div>
   );
@@ -2405,9 +2300,6 @@ export const AgentConfigManagement: React.FC = () => {
         </TabPane>
         <TabPane tab={t('agent.config.tabPermission')} itemKey="permission">
           <PermissionTab />
-        </TabPane>
-        <TabPane tab={t('agent.config.tabRag')} itemKey="rag">
-          <RagKnowledgeTab />
         </TabPane>
         <TabPane tab={t('agent.config.tabGraph')} itemKey="graph">
           <KnowledgeGraphTab />

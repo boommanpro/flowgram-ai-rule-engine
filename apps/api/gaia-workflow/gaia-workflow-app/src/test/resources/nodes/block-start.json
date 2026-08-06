@@ -1,0 +1,6 @@
+{
+  "id": "block_start_0",
+  "type": "block-start",
+  "meta": { "position": { "x": 500, "y": 180 } },
+  "data": { "title": "块开始" }
+}

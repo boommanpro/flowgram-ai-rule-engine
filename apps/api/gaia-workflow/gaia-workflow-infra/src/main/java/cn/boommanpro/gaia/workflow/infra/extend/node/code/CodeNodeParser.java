@@ -36,11 +36,11 @@ public class CodeNodeParser extends BaseNodeParser<CodeNode> {
         String scriptLanguage = ParameterParseUtils.getStringByPath(nodeJSONObject, SCRIPT_LANGUAGE_PATH);
 
         CodeNode codeNode;
-        if (scriptLanguage == null || "jsReturn".equalsIgnoreCase(scriptLanguage)) {
-            // 默认或JS语言使用原来的JsFunExecNode
+        if (isJavaScript(scriptLanguage)) {
+            // JavaScript（含 null/jsReturn/javascript/js）统一走 GraalJS 引擎
             codeNode = new JsFunExecNode(scriptContent);
         } else {
-            // 其他语言使用新的DynamicCompileNode
+            // 其他语言（java/groovy）使用 DynamicCompileNode 动态编译
             codeNode = new DynamicCompileNode(scriptContent, scriptLanguage);
         }
 
@@ -54,6 +54,19 @@ public class CodeNodeParser extends BaseNodeParser<CodeNode> {
         codeNode.setOutputParameters(parseNodeParameters(outputsSchema, outputsValues));
 
         return codeNode;
+    }
+
+    /**
+     * 判断脚本语言是否为 JavaScript 系列。
+     * null / "jsReturn" / "javascript" / "js" 均走 GraalJS 引擎，
+     * 因为 {@link cn.boommanpro.gaia.workflow.infra.extend.node.code.compiler.CompilerEngineEnum}
+     * 仅注册了 JAVA 与 GROOVY，DynamicCompileNode 无法处理 JS。
+     */
+    private static boolean isJavaScript(String scriptLanguage) {
+        return scriptLanguage == null
+                || "jsReturn".equalsIgnoreCase(scriptLanguage)
+                || "javascript".equalsIgnoreCase(scriptLanguage)
+                || "js".equalsIgnoreCase(scriptLanguage);
     }
 
     public static List<Parameter> parseNodeParameters(JSONObject schemaObject, JSONObject valueMapObject) {

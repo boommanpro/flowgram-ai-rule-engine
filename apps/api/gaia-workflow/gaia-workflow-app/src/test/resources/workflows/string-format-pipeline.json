@@ -1,0 +1,48 @@
+{
+  "nodes": [
+    {
+      "id": "start_0",
+      "type": "start",
+      "meta": { "position": { "x": 180, "y": 180 } },
+      "data": {
+        "title": "开始",
+        "outputs": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string", "default": "Hello Flow." }
+          }
+        }
+      }
+    },
+    {
+      "id": "string_format_0",
+      "type": "string-format",
+      "meta": { "position": { "x": 500, "y": 180 } },
+      "data": {
+        "title": "格式化",
+        "inputsValues": {
+          "name": { "type": "ref", "content": ["start_0", "query"] }
+        },
+        "script": { "language": "spel-standard", "content": "Hello, ${name}!" },
+        "outputs": { "type": "object", "properties": { "formatStringResult": { "type": "string" } } },
+        "inputs": { "type": "object", "properties": { "name": { "type": "string" } } }
+      }
+    },
+    {
+      "id": "end_0",
+      "type": "end",
+      "meta": { "position": { "x": 820, "y": 180 } },
+      "data": {
+        "title": "结束",
+        "inputsValues": {
+          "output": { "type": "ref", "content": ["string_format_0", "formatStringResult"] }
+        },
+        "inputs": { "type": "object", "properties": { "output": { "type": "string" } } }
+      }
+    }
+  ],
+  "edges": [
+    { "sourceNodeID": "start_0", "targetNodeID": "string_format_0" },
+    { "sourceNodeID": "string_format_0", "targetNodeID": "end_0" }
+  ]
+}

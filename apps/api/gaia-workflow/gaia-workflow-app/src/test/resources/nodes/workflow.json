@@ -1,0 +1,22 @@
+{
+  "id": "workflow_0",
+  "type": "workflow",
+  "meta": { "position": { "x": 500, "y": 180 } },
+  "data": {
+    "title": "子工作流调用",
+    "workflowId": "wf_sub_example",
+    "workflowName": "子工作流示例",
+    "workflowDescription": "被父工作流调用的子流程",
+    "inputsValues": {
+      "query": { "type": "ref", "content": ["start_0", "query"] }
+    },
+    "inputs": {
+      "type": "object",
+      "properties": { "query": { "type": "string" } }
+    },
+    "outputs": {
+      "type": "object",
+      "properties": { "result": { "type": "string" } }
+    }
+  }
+}

@@ -51,18 +51,7 @@ export const DebugPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
     setExpandedIds(new Set());
   }, [currentSessionKey]);
 
-  // Persist to localStorage
-  useEffect(() => {
-    if (!currentSessionKey) return;
-    const key = `agent-debug-${currentSessionKey}`;
-    if (debugEntries.length > 0) {
-      try {
-        localStorage.setItem(key, JSON.stringify(debugEntries.slice(-50)));
-      } catch {
-        // ignore quota errors
-      }
-    }
-  }, [debugEntries, currentSessionKey]);
+  // 调试信息持久化由 AgentContext 统一管理，避免会话切换时竞态覆盖
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {

@@ -1,0 +1,6 @@
+{
+  "id": "note_0",
+  "type": "note",
+  "meta": { "position": { "x": 300, "y": 300 } },
+  "data": { "title": "注释节点", "note": "这是一个备注说明" }
+}

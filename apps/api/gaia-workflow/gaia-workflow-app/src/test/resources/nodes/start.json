@@ -1,0 +1,15 @@
+{
+  "id": "start_0",
+  "type": "start",
+  "meta": { "position": { "x": 180, "y": 180 } },
+  "data": {
+    "title": "开始节点",
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "query": { "type": "string", "default": "Hello Flow." }
+      },
+      "required": []
+    }
+  }
+}

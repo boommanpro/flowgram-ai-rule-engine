@@ -3,6 +3,7 @@ package cn.boommanpro.gaia.workflow.app.service;
 import cn.boommanpro.gaia.workflow.app.config.AgentProperties;
 import cn.boommanpro.gaia.workflow.app.domain.agent.input.ChatInput;
 import cn.boommanpro.gaia.workflow.app.domain.agent.input.ToolResultInput;
+import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentConfig;
 import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentGlobalPermission;
 import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentGraphNode;
 import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentGraphEdge;
@@ -11,6 +12,7 @@ import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentMessage;
 import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentPermission;
 import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentSession;
 import cn.boommanpro.gaia.workflow.infra.manage.entity.GaiaWorkflowTemplate;
+import cn.boommanpro.gaia.workflow.infra.manage.service.AgentConfigService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentGlobalPermissionService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentGraphEdgeService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentGraphNodeService;
@@ -72,6 +74,7 @@ public class AgentChatService {
     private final AgentModelConfigService modelConfigService;
     private final AgentSessionService sessionService;
     private final GaiaWorkflowTemplateAppService gaiaWorkflowTemplateAppService;
+    private final AgentConfigService configService;
 
     private final ExecutorService executor = Executors.newCachedThreadPool(r -> {
         Thread t = new Thread(r, "agent-chat");
@@ -90,7 +93,8 @@ public class AgentChatService {
                             AgentProperties properties,
                             AgentModelConfigService modelConfigService,
                             AgentSessionService sessionService,
-                            GaiaWorkflowTemplateAppService gaiaWorkflowTemplateAppService) {
+                            GaiaWorkflowTemplateAppService gaiaWorkflowTemplateAppService,
+                            AgentConfigService configService) {
         this.messageService = messageService;
         this.permissionService = permissionService;
         this.globalPermissionService = globalPermissionService;
@@ -103,6 +107,7 @@ public class AgentChatService {
         this.modelConfigService = modelConfigService;
         this.sessionService = sessionService;
         this.gaiaWorkflowTemplateAppService = gaiaWorkflowTemplateAppService;
+        this.configService = configService;
     }
 
     @PreDestroy
@@ -162,21 +167,41 @@ public class AgentChatService {
     }
 
     /**
-     * 压缩会话历史：保留最近 max/2 条，其余调 LLM 摘要后替换为一条 system 消息（SSE）
+     * 压缩会话历史（SSE）：基于 token 百分比判断是否需要压缩，
+     * 保留后半部分消息，前半部分调 LLM 摘要后替换为一条 system 消息。
      */
     public void compact(SseEmitter emitter, String sessionKey) {
         executor.execute(() -> {
             try {
+                // 加载模型配置获取 contextWindow
+                AgentModelConfigService.LlmConfig llmConfig = modelConfigService.getLlmConfig();
+                int contextWindow = llmConfig.getContextWindow() > 0 ? llmConfig.getContextWindow() : 32768;
+
                 List<AgentMessage> allMsgs = messageService.list(
                     new QueryWrapper<AgentMessage>().eq("session_key", sessionKey).orderByAsc("id"));
-                int max = properties.getHistory().getMaxMessages();
-                if (allMsgs.size() <= max) {
+
+                // 估算当前历史 token 用量
+                StringBuilder allText = new StringBuilder();
+                for (AgentMessage m : allMsgs) {
+                    allText.append(m.getRole()).append(": ")
+                        .append(m.getContent() != null ? m.getContent() : "").append("\n");
+                }
+                int estimatedTokens = estimateTokens(allText.toString());
+                int percentage = (int) ((estimatedTokens * 100L) / contextWindow);
+
+                if (allMsgs.size() < 6 || percentage < 50) {
                     emitter.send(SseEmitter.event().name("done").data(
-                        new JSONObject().set("message", "No compaction needed").toString()));
+                        new JSONObject()
+                            .set("message", "No compaction needed")
+                            .set("tokenPercentage", percentage)
+                            .set("estimatedTokens", estimatedTokens)
+                            .set("limit", contextWindow)
+                            .toString()));
                     emitter.complete();
                     return;
                 }
-                int keepCount = max / 2;
+
+                int keepCount = allMsgs.size() / 2;
                 List<AgentMessage> toSummarize = allMsgs.subList(0, allMsgs.size() - keepCount);
                 List<AgentMessage> toKeep = allMsgs.subList(allMsgs.size() - keepCount, allMsgs.size());
 
@@ -199,6 +224,9 @@ public class AgentChatService {
                         .set("message", "Compacted")
                         .set("removed", toSummarize.size())
                         .set("kept", toKeep.size())
+                        .set("tokenPercentageBefore", percentage)
+                        .set("estimatedTokensBefore", estimatedTokens)
+                        .set("limit", contextWindow)
                         .toString()));
                 emitter.complete();
             } catch (Exception e) {
@@ -355,6 +383,17 @@ public class AgentChatService {
         }
         log.info("[{}] RAG retrieval: {} chunks matched in {}ms", sessionKey.substring(0, 8), ragChunks, ragMs);
 
+        // === 4.5 加载节点知识库（完整注入系统提示词）
+        long nodeKbStart = System.currentTimeMillis();
+        String nodeKbContext = buildNodeKnowledgeContext(loc);
+        long nodeKbMs = System.currentTimeMillis() - nodeKbStart;
+        int nodeKbCount = 0;
+        if (nodeKbContext != null) {
+            systemPrompt += "\n\n" + nodeKbContext;
+            nodeKbCount = nodeKbContext.split("### ").length - 1;
+        }
+        log.info("[{}] Node knowledge: {} entries loaded in {}ms", sessionKey.substring(0, 8), nodeKbCount, nodeKbMs);
+
         // === 5. 加载知识图谱 ===
         long graphStart = System.currentTimeMillis();
         String graphContext = buildGraphContext(history);
@@ -388,6 +427,39 @@ public class AgentChatService {
         messages.add(new JSONObject().set("role", "system").set("content", systemPrompt));
         messages.addAll(history);
 
+        // === 7.5 Token 估算与上下文压缩 ===
+        int contextWindow = llmConfig.getContextWindow() > 0 ? llmConfig.getContextWindow() : 32768;
+        int estimatedTokens = estimateMessagesTokens(messages);
+        int tokenPercentage = (int) ((estimatedTokens * 100L) / contextWindow);
+
+        // 90% 强制压缩：自动触发内联压缩，然后重新加载历史和构建 messages
+        if (tokenPercentage >= 90) {
+            log.warn("[{}] Token usage {}% >= 90%, auto-compacting...", sessionKey.substring(0, 8), tokenPercentage);
+            int removed = compactHistoryInline(sessionKey);
+            if (removed > 0) {
+                // 重新加载历史并重建 messages
+                history = loadMessages(sessionKey);
+                messages = new ArrayList<>();
+                messages.add(new JSONObject().set("role", "system").set("content", systemPrompt));
+                messages.addAll(history);
+                estimatedTokens = estimateMessagesTokens(messages);
+                tokenPercentage = (int) ((estimatedTokens * 100L) / contextWindow);
+                log.info("[{}] After compaction: token usage {}%", sessionKey.substring(0, 8), tokenPercentage);
+            }
+        }
+
+        // 80% 发送提示事件（不阻塞，仅告知前端）
+        if (tokenPercentage >= 80 && tokenPercentage < 90) {
+            emitter.send(SseEmitter.event().name("token_warning").data(
+                new JSONObject()
+                    .set("percentage", tokenPercentage)
+                    .set("estimated", estimatedTokens)
+                    .set("limit", contextWindow)
+                    .set("message", "上下文即将达上限，建议压缩历史对话")
+                    .toString()
+            ));
+        }
+
         // === 8. 构建请求体 ===
         JSONObject body = new JSONObject()
             .set("model", llmConfig.getModel())
@@ -408,18 +480,22 @@ public class AgentChatService {
             .set("apiHost", llmConfig.getApiHost())
             .set("temperature", llmConfig.getTemperature())
             .set("maxTokens", llmConfig.getMaxTokens())
-            .set("contextWindow", llmConfig.getContextWindow())
+            .set("contextWindow", contextWindow)
             .set("historyMessages", history.size())
             .set("systemPromptChars", systemPrompt.length())
             .set("ragChunks", ragChunks)
             .set("ragMs", ragMs)
+            .set("nodeKbCount", nodeKbCount)
+            .set("nodeKbMs", nodeKbMs)
             .set("graphNodes", graphNodes)
             .set("graphMs", graphMs)
             .set("templateCount", templateCount)
             .set("templateMs", templateMs)
             .set("toolsCount", toolsSchema.size())
             .set("toolsMs", toolsMs)
-            .set("totalMessages", messages.size());
+            .set("totalMessages", messages.size())
+            .set("estimatedTokens", estimatedTokens)
+            .set("tokenPercentage", tokenPercentage);
         emitter.send(SseEmitter.event().name("context_loaded").data(contextInfo.toString()));
 
         // === 10. 发送 debug_request 事件（含工具列表，方便排查） ===
@@ -515,7 +591,9 @@ public class AgentChatService {
 
         // === 13. 保存 assistant 消息 ===
         String content = contentBuilder.toString();
-        String toolCallsJson = toolCallsMap.isEmpty() ? null
+        // 如果回复包含 ::options，剥除 tool_calls，避免前端同时渲染选项和工具调用卡片
+        boolean hasOptions = containsOptionsBlock(content);
+        String toolCallsJson = (toolCallsMap.isEmpty() || hasOptions) ? null
             : JSONUtil.toJsonStr(new ArrayList<>(toolCallsMap.values()));
         saveMessage(sessionKey, "assistant", content, toolCallsJson, null, null, null);
 
@@ -532,8 +610,49 @@ public class AgentChatService {
                 sessionKey.substring(0, 8), content.length(), toolCallsMap.size(), durationMs);
 
         // === 15. 处理 tool_calls ===
-        if (!toolCallsMap.isEmpty()) {
+        // 如果回复包含 ::options，说明 LLM 在请求用户选择/澄清，
+        // 此时不应执行工具调用，否则用户未选择选项会话就继续了
+        if (!toolCallsMap.isEmpty() && !containsOptionsBlock(content)) {
             handleToolCalls(emitter, sessionKey, new ArrayList<>(toolCallsMap.values()));
+        } else if (!toolCallsMap.isEmpty() && containsOptionsBlock(content)) {
+            log.info("[{}] Detected ::options in response, skipping {} tool_calls",
+                    sessionKey.substring(0, 8), toolCallsMap.size());
+        }
+    }
+
+    /**
+     * 加载节点知识库（从 agent_config 表，config_type='node_knowledge'）
+     * 完整注入系统提示词，让 AI 了解每种节点的 JSON 结构和配置方式
+     */
+    private String buildNodeKnowledgeContext(String locale) {
+        try {
+            boolean isZh = "zh-CN".equals(locale);
+            String suffix = isZh ? "" : ".en";
+            List<AgentConfig> configs = configService.list(
+                new QueryWrapper<AgentConfig>()
+                    .eq("config_type", "node_knowledge")
+                    .likeRight("config_key", "node_")
+                    .orderByAsc("config_key"));
+            if (configs == null || configs.isEmpty()) {
+                return null;
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append("## 节点知识库\n以下知识点描述了每种节点类型的 JSON 结构、配置方式和注意事项：\n\n");
+            int count = 0;
+            for (AgentConfig config : configs) {
+                // 按 locale 过滤：中文版 config_key 不含 .en，英文版含 .en
+                boolean isEntryEn = config.getConfigKey() != null && config.getConfigKey().endsWith(".en");
+                if (isZh && isEntryEn) continue;
+                if (!isZh && !isEntryEn) continue;
+                String content = config.getContent();
+                if (content == null || content.isEmpty()) continue;
+                sb.append("### ").append(config.getConfigKey()).append("\n").append(content).append("\n\n");
+                count++;
+            }
+            return count > 0 ? sb.toString() : null;
+        } catch (Exception e) {
+            log.warn("Failed to load node knowledge: {}", e.getMessage());
+            return null;
         }
     }
 
@@ -852,11 +971,12 @@ public class AgentChatService {
     }
 
     /**
-     * 加载历史消息（最近 N 条），转成 OpenAI messages 格式
-     * 在 user 消息边界截断，避免出现悬空的 tool_calls
+     * 加载历史消息（最近 N 条），转成 OpenAI messages 格式。
+     * 加载上限放宽到 200 条，由 token 百分比压缩逻辑（80%提示/90%强制）控制实际上下文大小。
+     * 在 user 消息边界截断，避免出现悬空的 tool_calls。
      */
     private List<JSONObject> loadMessages(String sessionKey) {
-        int max = properties.getHistory().getMaxMessages();
+        int max = Math.max(properties.getHistory().getMaxMessages(), 200);
         QueryWrapper<AgentMessage> wrapper = new QueryWrapper<>();
         wrapper.eq("session_key", sessionKey).orderByDesc("id").last("LIMIT " + max);
         List<AgentMessage> msgs = messageService.list(wrapper);
@@ -951,6 +1071,89 @@ public class AgentChatService {
             return sb.toString();
         } catch (Exception e) {
             return "";
+        }
+    }
+
+    /**
+     * 检测回复内容是否包含 ::options 选项块
+     */
+    private boolean containsOptionsBlock(String content) {
+        return content != null && content.contains("::options");
+    }
+
+    /**
+     * 粗略估算文本的 token 数量。
+     * <p>
+     * 中文约 1.5 token/字，英文约 0.25 token/字符（4字符≈1token），
+     * JSON 结构开销约 10%。
+     */
+    private int estimateTokens(String text) {
+        if (text == null || text.isEmpty()) return 0;
+        int chineseChars = 0;
+        int otherChars = 0;
+        for (char c : text.toCharArray()) {
+            if (Character.UnicodeScript.of(c) == Character.UnicodeScript.HAN) {
+                chineseChars++;
+            } else if (!Character.isWhitespace(c)) {
+                otherChars++;
+            }
+        }
+        return (int) Math.ceil((chineseChars * 1.5 + otherChars * 0.25) * 1.1);
+    }
+
+    /**
+     * 估算 messages 列表的总 token 数（含每条消息的 role 等结构开销）
+     */
+    private int estimateMessagesTokens(List<JSONObject> messages) {
+        int total = 0;
+        for (JSONObject msg : messages) {
+            total += 4; // role + delimiters per message
+            Object content = msg.get("content");
+            if (content instanceof String) {
+                total += estimateTokens((String) content);
+            } else if (content != null) {
+                total += estimateTokens(content.toString());
+            }
+            if (msg.containsKey("tool_calls")) {
+                Object tc = msg.get("tool_calls");
+                total += estimateTokens(tc != null ? tc.toString() : "");
+            }
+        }
+        return total + 3; // priming overhead
+    }
+
+    /**
+     * 内联压缩历史对话（不通过 SSE），保留后半部分，前半部分生成摘要替换。
+     * 返回压缩掉的消息数，0 表示无需压缩。
+     */
+    private int compactHistoryInline(String sessionKey) {
+        try {
+            List<AgentMessage> allMsgs = messageService.list(
+                new QueryWrapper<AgentMessage>().eq("session_key", sessionKey).orderByAsc("id"));
+            if (allMsgs.size() < 6) return 0; // 太少不压缩
+
+            int keepCount = allMsgs.size() / 2;
+            List<AgentMessage> toSummarize = allMsgs.subList(0, allMsgs.size() - keepCount);
+
+            StringBuilder summaryText = new StringBuilder();
+            for (AgentMessage m : toSummarize) {
+                summaryText.append(m.getRole()).append(": ")
+                    .append(m.getContent() != null ? m.getContent() : "").append("\n");
+            }
+
+            String summary = summarizeWithLlm(summaryText.toString());
+
+            for (AgentMessage m : toSummarize) {
+                messageService.removeById(m.getId());
+            }
+
+            saveMessage(sessionKey, "system", "对话历史摘要:\n" + summary, null, null, null, null);
+            log.info("[{}] Auto-compacted: removed {} messages, kept {}",
+                    sessionKey.substring(0, 8), toSummarize.size(), keepCount);
+            return toSummarize.size();
+        } catch (Exception e) {
+            log.warn("[{}] Auto-compact failed: {}", sessionKey.substring(0, 8), e.getMessage());
+            return 0;
         }
     }
 }

@@ -1,0 +1,66 @@
+{
+  "id": "loop_0",
+  "type": "loop",
+  "meta": { "position": { "x": 540, "y": 0 } },
+  "data": {
+    "title": "Loop_1",
+    "loopFor": {
+      "type": "ref",
+      "content": ["start_0", "items"]
+    },
+    "loopOutputs": {
+      "processed": {
+        "type": "ref",
+        "content": ["code_in_loop", "upper"]
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "required": [],
+      "properties": {
+        "processed": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "blocks": [
+    {
+      "id": "block_start_0",
+      "type": "block-start",
+      "meta": { "position": { "x": 32, "y": 190 } },
+      "data": {}
+    },
+    {
+      "id": "block_end_0",
+      "type": "block-end",
+      "meta": { "position": { "x": 800, "y": 280 } },
+      "data": {}
+    },
+    {
+      "id": "code_in_loop",
+      "type": "code",
+      "meta": { "position": { "x": 344, "y": 0 } },
+      "data": {
+        "title": "处理元素",
+        "script": {
+          "language": "javascript",
+          "content": "var itemStr = item == null ? \"\" : item.toString();\nvar result = { upper: itemStr.toUpperCase() };\nresult;"
+        },
+        "inputsValues": {
+          "item": { "type": "ref", "content": ["__loop_current__", "value"] }
+        },
+        "outputs": {
+          "type": "object",
+          "properties": { "upper": { "type": "string" } }
+        },
+        "inputs": {
+          "type": "object",
+          "properties": { "item": { "type": "string" } }
+        }
+      }
+    }
+  ],
+  "edges": [
+    { "sourceNodeID": "block_start_0", "targetNodeID": "code_in_loop" },
+    { "sourceNodeID": "code_in_loop", "targetNodeID": "block_end_0" }
+  ]
+}

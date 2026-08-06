@@ -1,0 +1,28 @@
+{
+  "id": "variable_0",
+  "type": "variable",
+  "meta": { "position": { "x": 500, "y": 180 } },
+  "data": {
+    "title": "变量赋值",
+    "assign": [
+      {
+        "operator": "declare",
+        "left": "greeting",
+        "right": {
+          "type": "constant",
+          "content": "Hello World",
+          "schema": { "type": "string" }
+        }
+      },
+      {
+        "operator": "declare",
+        "left": "count",
+        "right": {
+          "type": "constant",
+          "content": 42,
+          "schema": { "type": "number" }
+        }
+      }
+    ]
+  }
+}

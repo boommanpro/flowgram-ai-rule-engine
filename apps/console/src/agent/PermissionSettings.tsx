@@ -18,41 +18,31 @@ const ACTION_GROUPS: { titleKey: string; actions: { name: string; descKey: strin
   {
     titleKey: 'agent.perm.groupNav',
     actions: [
-      { name: 'goHome', descKey: 'agent.perm.action.goHome' },
-      { name: 'goAdmin', descKey: 'agent.perm.action.goAdmin' },
-      { name: 'goReleases', descKey: 'agent.perm.action.goReleases' },
-      { name: 'goEditor', descKey: 'agent.perm.action.goEditor' },
-      { name: 'goTemplateEditor', descKey: 'agent.perm.action.goTemplateEditor' },
+      { name: 'navigate', descKey: 'agent.perm.action.navigate' },
     ],
   },
   {
     titleKey: 'agent.perm.groupQuery',
     actions: [
-      { name: 'listWorkflows', descKey: 'agent.perm.action.listWorkflows' },
-      { name: 'listTemplates', descKey: 'agent.perm.action.listTemplates' },
-      { name: 'listLogs', descKey: 'agent.perm.action.listLogs' },
-      { name: 'getWorkflowDetail', descKey: 'agent.perm.action.getWorkflowDetail' },
-      { name: 'getNodeDetail', descKey: 'agent.perm.action.getNodeDetail' },
+      { name: 'query', descKey: 'agent.perm.action.query' },
     ],
   },
   {
     titleKey: 'agent.perm.groupWrite',
     actions: [
-      { name: 'createWorkflow', descKey: 'agent.perm.action.createWorkflow' },
-      { name: 'createTemplate', descKey: 'agent.perm.action.createTemplate' },
-      { name: 'saveWorkflow', descKey: 'agent.perm.action.saveWorkflow' },
-      { name: 'deleteWorkflow', descKey: 'agent.perm.action.deleteWorkflow' },
+      { name: 'manage', descKey: 'agent.perm.action.manage' },
     ],
   },
   {
     titleKey: 'agent.perm.groupCanvas',
     actions: [
-      { name: 'addNode', descKey: 'agent.perm.action.addNode' },
-      { name: 'updateNode', descKey: 'agent.perm.action.updateNode' },
-      { name: 'deleteNode', descKey: 'agent.perm.action.deleteNode' },
-      { name: 'connect', descKey: 'agent.perm.action.connect' },
-      { name: 'disconnect', descKey: 'agent.perm.action.disconnect' },
-      { name: 'autoLayout', descKey: 'agent.perm.action.autoLayout' },
+      { name: 'canvas', descKey: 'agent.perm.action.canvas' },
+    ],
+  },
+  {
+    titleKey: 'agent.perm.groupPlan',
+    actions: [
+      { name: 'createPlan', descKey: 'agent.perm.action.createPlan' },
     ],
   },
 ];

@@ -1,0 +1,18 @@
+{
+  "id": "assignee_0",
+  "type": "assignee",
+  "meta": { "position": { "x": 500, "y": 180 } },
+  "data": {
+    "title": "人工审批",
+    "assignee": "user_001",
+    "taskName": "审批申请",
+    "taskDesc": "请审批该申请单",
+    "form": {
+      "type": "object",
+      "properties": {
+        "approved": { "type": "boolean", "title": "是否通过" },
+        "comment": { "type": "string", "title": "审批意见" }
+      }
+    }
+  }
+}

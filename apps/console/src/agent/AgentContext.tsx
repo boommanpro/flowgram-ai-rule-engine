@@ -206,12 +206,16 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     agentApi.getPermissions(currentSessionKey).then(setPermissions).catch(() => {});
   }, [currentSessionKey]);
 
-  // 会话切换时从 localStorage 加载调试历史
+  // 会话切换时从 localStorage 和后端 DB 加载调试历史
   useEffect(() => {
     if (!currentSessionKey) {
       setDebugEntries([]);
+      backendTokenEstimatedRef.current = null;
       return;
     }
+    // 重置后端 token 估算，等待新会话的 context_loaded 事件
+    backendTokenEstimatedRef.current = null;
+    // 先从 localStorage 快速加载（同步）
     try {
       const stored = localStorage.getItem(`agent-debug-${currentSessionKey}`);
       if (stored) {
@@ -227,11 +231,62 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setDebugEntries([]);
     }
+    // 再从后端 DB 加载（异步，DB 有数据时覆盖 localStorage）
+    agentApi.getDebugData(currentSessionKey).then((data) => {
+      if (data && data.trim()) {
+        try {
+          const parsed = JSON.parse(data);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setDebugEntries(parsed);
+            // 同步到 localStorage
+            localStorage.setItem(`agent-debug-${currentSessionKey}`, data);
+          }
+        } catch { /* ignore */ }
+      }
+    }).catch(() => {});
   }, [currentSessionKey]);
 
-  // 估算 token 使用量（消息 + 系统提示词，4 字符 ≈ 1 token）
+  // 调试信息变更时持久化到 localStorage + 后端 DB（debounced）
+  const debugEntriesRef = useRef<typeof debugEntries>([]);
+  debugEntriesRef.current = debugEntries;
+  const debugSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    const messageTokens = Math.ceil(JSON.stringify(messages).length / 4);
+    if (!currentSessionKey || debugEntries.length === 0) return;
+    const key = `agent-debug-${currentSessionKey}`;
+    const json = JSON.stringify(debugEntries.slice(-50));
+    // 同步保存到 localStorage
+    try {
+      localStorage.setItem(key, json);
+    } catch {
+      // ignore quota errors
+    }
+    // debounced 保存到后端 DB（避免频繁请求）
+    if (debugSaveTimerRef.current) {
+      clearTimeout(debugSaveTimerRef.current);
+    }
+    debugSaveTimerRef.current = setTimeout(() => {
+      agentApi.saveDebugData(currentSessionKey, json).catch(() => {});
+    }, 2000);
+    return () => {
+      if (debugSaveTimerRef.current) {
+        clearTimeout(debugSaveTimerRef.current);
+      }
+    };
+  }, [debugEntries]);
+
+  // 估算 token 使用量（仅作 fallback，后端 context_loaded 事件的 estimatedTokens 优先）
+  // 后端使用中英文区分的精确估算（中文1.5token/字，英文0.25token/字符），
+  // 前端仅在未收到后端数据时用粗略估算
+  const backendTokenEstimatedRef = useRef<number | null>(null);
+  useEffect(() => {
+    // 如果后端已提供 estimatedTokens，不覆盖
+    if (backendTokenEstimatedRef.current != null) {
+      const estimated = backendTokenEstimatedRef.current;
+      setTokenUsage((prev) => ({ estimated, limit: prev.limit }));
+      return;
+    }
+    // fallback: 粗略估算（中英混合，按 ~2.5 字符/token）
+    const messageTokens = Math.ceil(JSON.stringify(messages).length / 2.5);
     const estimated = messageTokens + systemPromptTokensRef.current;
     setTokenUsage((prev) => ({ estimated, limit: prev.limit }));
   }, [messages]);
@@ -371,6 +426,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
       const results: string[] = [];
 
       // 逐步执行
+      const createdNodeIds: string[] = []; // 跟踪 addNode 返回的 nodeId
       for (let i = 0; i < planSteps.length; i++) {
         const step = planSteps[i];
 
@@ -392,7 +448,28 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
           if (!executor) {
             throw new Error('tool executor not registered');
           }
-          const { result, rejected } = await executor.execute(step.action, step.args || {});
+          // 解析 connect 步骤中的占位 nodeId
+          // $0, $1, $2... 引用第 N 个 addNode 返回的 nodeId
+          // 非标准 nodeId（非 start_0/end_0/已知 nodeId）自动替换为最近创建的 nodeId
+          let resolvedArgs = { ...step.args };
+          if (step.action === 'canvas' && resolvedArgs?.action === 'connect') {
+            const resolveNodeId = (id: string): string => {
+              if (!id) return id;
+              if (id === 'start_0' || id === 'end_0') return id;
+              if (createdNodeIds.includes(id)) return id;
+              // $N 索引引用
+              const match = id.match(/^\$(\d+)$/);
+              if (match) {
+                const idx = parseInt(match[1]);
+                return createdNodeIds[idx] || createdNodeIds[createdNodeIds.length - 1] || id;
+              }
+              // 其他非标准 ID，替换为最近创建的 nodeId
+              return createdNodeIds[createdNodeIds.length - 1] || id;
+            };
+            resolvedArgs.from = resolveNodeId(resolvedArgs.from);
+            resolvedArgs.to = resolveNodeId(resolvedArgs.to);
+          }
+          const { result, rejected } = await executor.execute(step.action, resolvedArgs || {});
           const parsed = (() => {
             try {
               return JSON.parse(result);
@@ -400,6 +477,15 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
               return { raw: result };
             }
           })();
+
+          // 如果是 addNode，提取返回的 nodeId 供后续 connect 使用
+          if (step.action === 'canvas' && step.args?.action === 'addNode') {
+            const nodeId = parsed?.nodeId || parsed?.id;
+            if (nodeId && typeof nodeId === 'string') {
+              createdNodeIds.push(nodeId);
+            }
+          }
+
           results.push(JSON.stringify({ action: step.action, result: parsed, rejected }));
 
           // 更新为 done
@@ -647,17 +733,20 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
           }
         },
         onContextLoaded: (data: any) => {
-          // 用 context_loaded 事件更新 tokenUsage：limit 来自 contextWindow，estimated 追加系统提示词 token
-          if (data.contextWindow && data.contextWindow > 0) {
-            setTokenUsage((prev) => ({ estimated: prev.estimated, limit: data.contextWindow }));
-          }
-          if (data.systemPromptChars) {
+          // 优先使用后端提供的 token 估算（更准确），fallback 到前端粗估
+          if (data.estimatedTokens != null) {
+            backendTokenEstimatedRef.current = data.estimatedTokens;
+            setTokenUsage({
+              estimated: data.estimatedTokens,
+              limit: data.contextWindow || 32768,
+            });
+          } else if (data.contextWindow && data.systemPromptChars) {
+            // 兼容旧版：前端粗估
             systemPromptTokensRef.current = Math.ceil(data.systemPromptChars / 4);
-            // 立即重算 estimated
-            setTokenUsage((prev) => ({
-              estimated: Math.ceil(JSON.stringify(messages).length / 4) + systemPromptTokensRef.current,
-              limit: data.contextWindow || prev.limit,
-            }));
+            setTokenUsage({
+              estimated: Math.ceil(JSON.stringify(messages).length / 2.5) + systemPromptTokensRef.current,
+              limit: data.contextWindow,
+            });
           }
           if (sessionKey === currentSessionKeyRef.current) {
             setDebugEntries((prev) => {
@@ -672,6 +761,14 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
             });
           } else {
             updateDebugEntryInSession(sessionKey, (e) => !e.context, (e) => ({ ...e, context: data }));
+          }
+        },
+        onTokenWarning: (data: any) => {
+          // 80% 警告：更新 tokenUsage 并在 UI 提示
+          setTokenUsage({ estimated: data.estimated, limit: data.limit });
+          if (sessionKey === currentSessionKeyRef.current) {
+            // 可扩展：在聊天界面显示警告提示
+            console.warn(`[Token Warning] ${data.percentage}% (${data.estimated}/${data.limit}): ${data.message}`);
           }
         },
       };

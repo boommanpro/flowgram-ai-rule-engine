@@ -1,0 +1,49 @@
+{
+  "nodes": [
+    {
+      "id": "start_0",
+      "type": "start",
+      "meta": { "position": { "x": 180, "y": 180 } },
+      "data": {
+        "title": "开始",
+        "outputs": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string", "default": "World" }
+          }
+        }
+      }
+    },
+    {
+      "id": "code_js_0",
+      "type": "code",
+      "meta": { "position": { "x": 500, "y": 180 } },
+      "data": {
+        "title": "JS代码",
+        "script": {
+          "language": "javascript",
+          "content": "var nameStr = name == null ? \"\" : name.toString();\nvar result = { greeting: \"Hello, \" + nameStr + \"!\", length: nameStr.length };\nresult;"
+        },
+        "inputsValues": { "name": { "type": "ref", "content": ["start_0", "query"] } },
+        "outputs": { "type": "object", "properties": { "greeting": { "type": "string" }, "length": { "type": "number" } } },
+        "inputs": { "type": "object", "properties": { "name": { "type": "string" } } }
+      }
+    },
+    {
+      "id": "end_0",
+      "type": "end",
+      "meta": { "position": { "x": 820, "y": 180 } },
+      "data": {
+        "title": "结束",
+        "inputsValues": {
+          "output": { "type": "ref", "content": ["code_js_0", "greeting"] }
+        },
+        "inputs": { "type": "object", "properties": { "output": { "type": "string" } } }
+      }
+    }
+  ],
+  "edges": [
+    { "sourceNodeID": "start_0", "targetNodeID": "code_js_0" },
+    { "sourceNodeID": "code_js_0", "targetNodeID": "end_0" }
+  ]
+}

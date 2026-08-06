@@ -1,0 +1,28 @@
+{
+  "id": "code_groovy_0",
+  "type": "code",
+  "meta": { "position": { "x": 500, "y": 180 } },
+  "data": {
+    "title": "Groovy代码节点",
+    "script": {
+      "language": "groovy",
+      "content": "class ExampleCode {\n    Map<String, Object> execute(Map<String, Object> inputs) {\n        def result = new HashMap<String, Object>()\n        def name = inputs.get(\"name\") ?: \"\"\n        result.put(\"greeting\", \"Hello, ${name}!\".toString())\n        result.put(\"upper\", name.toString().toUpperCase())\n        return result\n    }\n}"
+    },
+    "inputsValues": {
+      "name": { "type": "ref", "content": ["start_0", "query"] }
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "greeting": { "type": "string" },
+        "upper": { "type": "string" }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      }
+    }
+  }
+}

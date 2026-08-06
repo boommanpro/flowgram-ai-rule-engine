@@ -1,0 +1,28 @@
+{
+  "id": "code_js_0",
+  "type": "code",
+  "meta": { "position": { "x": 500, "y": 180 } },
+  "data": {
+    "title": "JavaScript代码节点",
+    "script": {
+      "language": "javascript",
+      "content": "var nameStr = name == null ? \"\" : name.toString();\nvar result = {\n    greeting: \"Hello, \" + nameStr + \"!\",\n    length: nameStr.length\n};\nresult;"
+    },
+    "inputsValues": {
+      "name": { "type": "ref", "content": ["start_0", "query"] }
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "greeting": { "type": "string" },
+        "length": { "type": "number" }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      }
+    }
+  }
+}

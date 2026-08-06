@@ -1,0 +1,28 @@
+{
+  "id": "code_java_0",
+  "type": "code",
+  "meta": { "position": { "x": 500, "y": 180 } },
+  "data": {
+    "title": "Java代码节点",
+    "script": {
+      "language": "java",
+      "content": "import java.util.HashMap;\nimport java.util.Map;\npublic class ExampleCode {\n    public Map<String, Object> execute(Map<String, Object> inputs) {\n        Map<String, Object> result = new HashMap<>();\n        Object name = inputs.get(\"name\");\n        String nameStr = name == null ? \"\" : name.toString();\n        result.put(\"greeting\", \"Hello, \" + nameStr + \"!\");\n        result.put(\"length\", nameStr.length());\n        return result;\n    }\n}"
+    },
+    "inputsValues": {
+      "name": { "type": "ref", "content": ["start_0", "query"] }
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "greeting": { "type": "string" },
+        "length": { "type": "number" }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      }
+    }
+  }
+}

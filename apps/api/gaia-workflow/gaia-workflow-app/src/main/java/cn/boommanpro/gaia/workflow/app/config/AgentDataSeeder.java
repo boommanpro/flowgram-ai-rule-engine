@@ -5,9 +5,11 @@ import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentGraphEdge;
 import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentGraphNode;
 import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentKnowledgeChunk;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentConfigService;
+import cn.boommanpro.gaia.workflow.infra.manage.service.AgentGlobalPermissionService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentGraphEdgeService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentGraphNodeService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentKnowledgeChunkService;
+import cn.boommanpro.gaia.workflow.infra.manage.service.AgentPermissionService;
 import cn.hutool.core.io.IoUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
@@ -49,23 +51,40 @@ public class AgentDataSeeder implements ApplicationRunner {
     private final AgentKnowledgeChunkService knowledgeChunkService;
     private final AgentGraphNodeService graphNodeService;
     private final AgentGraphEdgeService graphEdgeService;
+    private final AgentPermissionService permissionService;
+    private final AgentGlobalPermissionService globalPermissionService;
     private final AgentProperties properties;
 
     public AgentDataSeeder(AgentConfigService configService,
                            AgentKnowledgeChunkService knowledgeChunkService,
                            AgentGraphNodeService graphNodeService,
                            AgentGraphEdgeService graphEdgeService,
+                           AgentPermissionService permissionService,
+                           AgentGlobalPermissionService globalPermissionService,
                            AgentProperties properties) {
         this.configService = configService;
         this.knowledgeChunkService = knowledgeChunkService;
         this.graphNodeService = graphNodeService;
         this.graphEdgeService = graphEdgeService;
+        this.permissionService = permissionService;
+        this.globalPermissionService = globalPermissionService;
         this.properties = properties;
     }
+
+    /**
+     * 旧版 21 个独立工具名（权限清理用）
+     */
+    private static final String[] OLD_TOOL_NAMES = {
+        "goHome", "goAdmin", "goReleases", "goEditor", "goTemplateEditor",
+        "listWorkflows", "listTemplates", "listLogs", "getWorkflowDetail", "getNodeDetail",
+        "createWorkflow", "createTemplate", "saveWorkflow", "deleteWorkflow",
+        "addNode", "updateNode", "deleteNode", "connect", "disconnect", "autoLayout"
+    };
 
     @Override
     public void run(ApplicationArguments args) {
         try {
+            cleanupOldPermissions();
             int modelCount = seedModelConfig();
             int promptCount = seedSystemPrompt();
             int configCount = seedNodeKnowledge();
@@ -75,6 +94,32 @@ public class AgentDataSeeder implements ApplicationRunner {
                     modelCount, promptCount, configCount, ragCount, graphCounts[0], graphCounts[1]);
         } catch (Exception e) {
             log.warn("Agent seed data initialization failed: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 清理旧版独立工具对应的权限设置（会话级 + 全局）
+     */
+    private void cleanupOldPermissions() {
+        int deleted = 0;
+        for (String oldName : OLD_TOOL_NAMES) {
+            long p = permissionService.count(
+                new QueryWrapper<cn.boommanpro.gaia.workflow.infra.manage.entity.AgentPermission>().eq("action", oldName));
+            if (p > 0) {
+                permissionService.remove(
+                    new QueryWrapper<cn.boommanpro.gaia.workflow.infra.manage.entity.AgentPermission>().eq("action", oldName));
+                deleted += p;
+            }
+            long g = globalPermissionService.count(
+                new QueryWrapper<cn.boommanpro.gaia.workflow.infra.manage.entity.AgentGlobalPermission>().eq("action", oldName));
+            if (g > 0) {
+                globalPermissionService.remove(
+                    new QueryWrapper<cn.boommanpro.gaia.workflow.infra.manage.entity.AgentGlobalPermission>().eq("action", oldName));
+                deleted += g;
+            }
+        }
+        if (deleted > 0) {
+            log.info("Cleaned up {} old permission entries for deprecated tools", deleted);
         }
     }
 

@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Modal, Toast } from '@douyinfe/semi-ui';
 import { workflowApi, type GaiaWorkflowTemplate } from '../../services/workflow-api';
 import type { CSSProperties } from 'react';
 import { useLanguage, t } from '../../i18n';
@@ -126,16 +127,23 @@ export const TemplateManagement = () => {
     }
   };
 
-  const handleDelete = async (tpl: GaiaWorkflowTemplate) => {
+  const handleDelete = (tpl: GaiaWorkflowTemplate) => {
     if (tpl.id == null) return;
-    if (!confirm(t('admin.deleteTemplate.confirm', { name: tpl.templateName }))) return;
-    try {
-      await workflowApi.deleteTemplate(tpl.id);
-      await loadData();
-    } catch (err) {
-      console.error('Delete failed:', err);
-      alert(t('admin.deleteFailed') + (err as Error).message);
-    }
+    Modal.confirm({
+      title: t('admin.deleteTemplate.title'),
+      content: t('admin.deleteTemplate.confirm', { name: tpl.templateName }),
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          await workflowApi.deleteTemplate(tpl.id);
+          await loadData();
+          Toast.success(t('admin.deleteSuccess'));
+        } catch (err) {
+          console.error('Delete failed:', err);
+          Toast.error(t('admin.deleteFailed') + (err as Error).message);
+        }
+      },
+    });
   };
 
   const handleOpenEditor = (tpl: GaiaWorkflowTemplate) => {

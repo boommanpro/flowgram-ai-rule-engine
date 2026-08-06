@@ -1,0 +1,38 @@
+{
+  "id": "branches_0",
+  "type": "branches",
+  "meta": { "position": { "x": 500, "y": 180 } },
+  "data": {
+    "title": "多路分支",
+    "branches": [
+      {
+        "id": "branch_match",
+        "title": "匹配分支",
+        "logic": "and",
+        "conditions": [
+          {
+            "key": "if_match",
+            "value": {
+              "type": "expression",
+              "content": "",
+              "left": { "type": "ref", "content": ["start_0", "query"] },
+              "operator": "eq",
+              "right": { "type": "constant", "content": "Hello Flow.", "schema": { "type": "string", "extra": { "weak": true } } }
+            }
+          }
+        ]
+      },
+      {
+        "id": "branch_default",
+        "title": "默认分支",
+        "logic": "and",
+        "conditions": [
+          {
+            "key": "if_else",
+            "value": { "type": "expression", "content": "" }
+          }
+        ]
+      }
+    ]
+  }
+}

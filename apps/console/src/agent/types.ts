@@ -110,7 +110,11 @@ export interface SseHandlers {
     toolsCount: number;
     toolsMs: number;
     totalMessages: number;
+    estimatedTokens: number;
+    tokenPercentage: number;
   }) => void;
+  /** Token 用量警告 — 上下文达到 80% 时触发 */
+  onTokenWarning?: (data: { percentage: number; estimated: number; limit: number; message: string }) => void;
   // New subagent events
   onSubagentToolCall?: (data: { id: string; action: string; args: any }) => void;
   onSubagentRoundDone?: (data: { round: number; toolCalls: number }) => void;

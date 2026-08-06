@@ -38,4 +38,10 @@ public class AgentSession {
     @TableField("is_deleted")
     @TableLogic
     private Integer isDeleted;
+
+    /**
+     * 调试信息 JSON（前端持久化的 debug entries）
+     */
+    @TableField("debug_data")
+    private String debugData;
 }

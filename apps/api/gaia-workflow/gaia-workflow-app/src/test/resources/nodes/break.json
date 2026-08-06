@@ -1,0 +1,6 @@
+{
+  "id": "break_0",
+  "type": "break",
+  "meta": { "position": { "x": 800, "y": 180 } },
+  "data": { "title": "中断循环" }
+}

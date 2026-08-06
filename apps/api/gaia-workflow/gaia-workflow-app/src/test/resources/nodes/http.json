@@ -1,0 +1,28 @@
+{
+  "id": "http_0",
+  "type": "http",
+  "meta": { "position": { "x": 500, "y": 180 } },
+  "data": {
+    "title": "HTTP请求",
+    "api": {
+      "method": "GET",
+      "url": { "type": "constant", "content": "https://httpbin.org/get" }
+    },
+    "headersValues": {
+      "X-Test": { "type": "constant", "content": "gaia" }
+    },
+    "paramsValues": {
+      "q": { "type": "constant", "content": "hello" }
+    },
+    "body": { "bodyType": "none" },
+    "timeout": { "timeout": 5000, "retryTimes": 0 },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "body": { "type": "string" },
+        "headers": { "type": "object" },
+        "statusCode": { "type": "number" }
+      }
+    }
+  }
+}

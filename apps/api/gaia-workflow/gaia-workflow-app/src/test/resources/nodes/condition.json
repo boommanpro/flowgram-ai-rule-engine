@@ -1,0 +1,39 @@
+{
+  "id": "condition_0",
+  "type": "condition",
+  "meta": { "position": { "x": 500, "y": 180 } },
+  "data": {
+    "title": "条件判断",
+    "conditions": [
+      {
+        "key": "if_match",
+        "value": {
+          "type": "expression",
+          "content": "",
+          "left": {
+            "type": "ref",
+            "content": ["start_0", "query"]
+          },
+          "operator": "eq",
+          "right": {
+            "type": "constant",
+            "content": "Hello Flow.",
+            "schema": { "type": "string", "extra": { "weak": true } }
+          }
+        }
+      },
+      {
+        "key": "if_empty",
+        "value": {
+          "type": "expression",
+          "content": "",
+          "left": {
+            "type": "ref",
+            "content": ["start_0", "query"]
+          },
+          "operator": "is_empty"
+        }
+      }
+    ]
+  }
+}

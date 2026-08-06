@@ -1,0 +1,21 @@
+{
+  "id": "end_0",
+  "type": "end",
+  "meta": { "position": { "x": 800, "y": 180 } },
+  "data": {
+    "title": "结束节点",
+    "inputsValues": {
+      "output": {
+        "type": "ref",
+        "content": ["start_0", "query"],
+        "extra": { "index": 0 }
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "properties": {
+        "output": { "type": "string" }
+      }
+    }
+  }
+}

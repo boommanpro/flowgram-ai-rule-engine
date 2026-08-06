@@ -59,6 +59,165 @@ export function createToolExecutor(navigate: NavigateFn): ToolExecutor {
     async execute(action: string, args: Record<string, any>): Promise<{ result: string; rejected: boolean }> {
       try {
         switch (action) {
+          // ===== 复合工具：导航 =====
+          case 'navigate': {
+            const target = args.target;
+            switch (target) {
+              case 'home':
+                navigate('/');
+                return { result: '{"success":true,"path":"/"}', rejected: false };
+              case 'admin':
+                navigate(args.tab === 'templates' ? '/admin/templates' : '/admin/workflows');
+                return { result: '{"success":true,"path":"/admin"}', rejected: false };
+              case 'releases':
+                navigate('/releases');
+                return { result: '{"success":true,"path":"/releases"}', rejected: false };
+              case 'editor':
+                navigate(args.workflowCode ? `/editor/${args.workflowCode}` : '/editor');
+                return { result: '{"success":true,"path":"/editor"}', rejected: false };
+              case 'templateEditor':
+                navigate(`/template-editor/${args.templateCode}`);
+                return { result: '{"success":true,"path":"/template-editor"}', rejected: false };
+              default:
+                return { result: `{"error":"unknown navigate target: ${target}"}`, rejected: false };
+            }
+          }
+
+          // ===== 复合工具：查询 =====
+          case 'query': {
+            const resource = args.resource;
+            switch (resource) {
+              case 'workflows': {
+                const list = await workflowApi.listWorkflows();
+                return { result: JSON.stringify(list || []), rejected: false };
+              }
+              case 'templates': {
+                const list = await workflowApi.listTemplates();
+                return { result: JSON.stringify(list || []), rejected: false };
+              }
+              case 'logs': {
+                const list = await workflowApi.listLogs(args.workflowCode);
+                return { result: JSON.stringify(list || []), rejected: false };
+              }
+              case 'workflowDetail': {
+                const wf = await workflowApi.getWorkflowByCode(args.workflowCode);
+                return { result: JSON.stringify(wf), rejected: false };
+              }
+              case 'nodeDetail': {
+                const ctx = getCanvasContext();
+                if (!ctx) return { result: '{"error":"not in editor page"}', rejected: false };
+                const doc = ctx.toJSON();
+                const node = doc.nodes?.find((n: any) => n.id === args.nodeId);
+                return { result: JSON.stringify(node || { error: 'node not found' }), rejected: false };
+              }
+              case 'availableVariables': {
+                const ctx = getCanvasContext();
+                if (!ctx) return { result: '{"error":"not in editor page"}', rejected: false };
+                const vars = ctx.getAvailableVariables();
+                return { result: JSON.stringify(vars), rejected: false };
+              }
+              default:
+                return { result: `{"error":"unknown query resource: ${resource}"}`, rejected: false };
+            }
+          }
+
+          // ===== 复合工具：管理 =====
+          case 'manage': {
+            const op = args.action;
+            switch (op) {
+              case 'createWorkflow': {
+                const workflowCode = `wf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                await workflowApi.createWorkflow({
+                  workflowCode,
+                  workflowName: args.name,
+                  workflowDesc: args.desc || '',
+                });
+                navigate(`/editor/${workflowCode}`);
+                return {
+                  result: JSON.stringify({ success: true, workflowCode, workflowName: args.name }),
+                  rejected: false,
+                };
+              }
+              case 'createTemplate': {
+                const templateCode = `tpl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                await workflowApi.createTemplate({
+                  templateCode,
+                  templateName: args.name,
+                  templateDesc: args.desc || '',
+                });
+                navigate(`/template-editor/${templateCode}`);
+                return {
+                  result: JSON.stringify({ success: true, templateCode, templateName: args.name }),
+                  rejected: false,
+                };
+              }
+              case 'saveWorkflow': {
+                const ctx = getCanvasContext();
+                if (!ctx) return { result: '{"error":"not in editor page"}', rejected: false };
+                const jsonData = ctx.toJSON();
+                const dataStr = JSON.stringify(jsonData);
+                const versions = await workflowApi.listVersions(args.workflowCode);
+                if (versions && versions.length > 0) {
+                  const current = versions.find((v: any) => v.isCurrent === 1) || versions[0];
+                  await workflowApi.updateVersion({ ...current, workflowData: dataStr });
+                } else {
+                  await workflowApi.createVersion({
+                    workflowCode: args.workflowCode,
+                    versionNumber: 'v1.0',
+                    versionDesc: 'Initial version',
+                    workflowData: dataStr,
+                    createdBy: 'agent',
+                  });
+                  const newVersions = await workflowApi.listVersions(args.workflowCode);
+                  if (newVersions && newVersions.length > 0) {
+                    await workflowApi.setCurrentVersion(newVersions[0].id!);
+                  }
+                }
+                return { result: '{"success":true}', rejected: false };
+              }
+              case 'deleteWorkflow': {
+                await workflowApi.deleteWorkflow(args.id);
+                return { result: '{"success":true}', rejected: false };
+              }
+              default:
+                return { result: `{"error":"unknown manage action: ${op}"}`, rejected: false };
+            }
+          }
+
+          // ===== 复合工具：画布 =====
+          case 'canvas': {
+            const op = args.action;
+            switch (op) {
+              case 'addNode':
+              case 'deleteNode':
+              case 'connect':
+              case 'disconnect':
+              case 'autoLayout':
+                return executeCanvasAction(op, args);
+              case 'updateNode': {
+                const ctx = getCanvasContext();
+                if (!ctx) return { result: '{"error":"not in editor page"}', rejected: false };
+                const success = ctx.updateNodeData(args.nodeId, args.data);
+                return { result: JSON.stringify({ success }), rejected: false };
+              }
+              case 'runWorkflow': {
+                const ctx = getCanvasContext();
+                if (!ctx) return { result: '{"error":"not in editor page"}', rejected: false };
+                const result = await ctx.runWorkflow(args.inputs);
+                return { result: JSON.stringify(result), rejected: false };
+              }
+              case 'runNode': {
+                const ctx = getCanvasContext();
+                if (!ctx) return { result: '{"error":"not in editor page"}', rejected: false };
+                const result = await ctx.runNode(args.nodeId, args.inputs);
+                return { result: JSON.stringify(result), rejected: false };
+              }
+              default:
+                return { result: `{"error":"unknown canvas action: ${op}"}`, rejected: false };
+            }
+          }
+
+          // ===== 兼容旧工具名（过渡期保留） =====
           // ===== 导航类 =====
           case 'goHome':
             navigate('/');
@@ -267,8 +426,14 @@ function executeCanvasAction(action: string, args: Record<string, any>): { resul
           ? findPositionAfter(ctx, args.afterNodeId)
           : { x: 300 + Math.random() * 200, y: 200 + Math.random() * 100 };
         const node = ctx.createNodeByType(args.type, position, template.data, undefined);
+        const nodeId = node?.id || template.id;
+        // FlowGram createWorkflowNodeByType 使用注册表默认值创建节点，
+        // 不会深度合并传入的 data。需要创建后立即 updateNodeData 注入 AI 提供的完整数据。
+        if (args.data && Object.keys(args.data).length > 0) {
+          ctx.updateNodeData(nodeId, template.data);
+        }
         return {
-          result: JSON.stringify({ success: true, nodeId: node?.id || template.id }),
+          result: JSON.stringify({ success: true, nodeId }),
           rejected: false,
         };
       }
