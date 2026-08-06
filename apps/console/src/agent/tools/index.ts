@@ -425,13 +425,10 @@ function executeCanvasAction(action: string, args: Record<string, any>): { resul
         const position = args.afterNodeId
           ? findPositionAfter(ctx, args.afterNodeId)
           : { x: 300 + Math.random() * 200, y: 200 + Math.random() * 100 };
+        // EditorCanvasBridge.createNodeByType 内部会将 data 包装为 { data } 传给
+        // createWorkflowNodeByType，框架 form 引擎据此初始化表单数据，data 一次性注入。
         const node = ctx.createNodeByType(args.type, position, template.data, undefined);
         const nodeId = node?.id || template.id;
-        // FlowGram createWorkflowNodeByType 使用注册表默认值创建节点，
-        // 不会深度合并传入的 data。需要创建后立即 updateNodeData 注入 AI 提供的完整数据。
-        if (args.data && Object.keys(args.data).length > 0) {
-          ctx.updateNodeData(nodeId, template.data);
-        }
         return {
           result: JSON.stringify({ success: true, nodeId }),
           rejected: false,

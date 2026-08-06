@@ -353,6 +353,7 @@ const MessageItem: React.FC<{
   streaming: boolean;
   onOptionClick: (option: string) => void;
 }> = ({ message, streaming, onOptionClick }) => {
+  const { openDebugEntry } = useAgent();
   // tool 类型
   if (message.role === 'tool') {
     if (message.toolCall) {
@@ -424,6 +425,26 @@ const MessageItem: React.FC<{
                 }}
               />
             ))}
+          </div>
+        )}
+        {/* assistant 消息调试跳转按钮 — 点击打开调试面板并定位到对应条目 */}
+        {!isUser && message.debugEntryId && message.content && (
+          <div style={{ marginTop: '4px', textAlign: 'right' }}>
+            <button
+              onClick={() => message.debugEntryId && openDebugEntry(message.debugEntryId)}
+              title={t('agent.debugJumpTip') || '查看本条回复的调试详情'}
+              style={{
+                fontSize: '10px',
+                color: '#888',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '2px 4px',
+                textDecoration: 'underline',
+              }}
+            >
+              {t('agent.debugJump') || '调试详情'}
+            </button>
           </div>
         )}
       </div>

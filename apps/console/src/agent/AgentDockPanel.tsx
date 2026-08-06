@@ -179,13 +179,15 @@ export const AgentDockPanel: React.FC = () => {
     createSession,
     sendMessage,
     stopStreaming,
+    debugPanelOpen,
+    setDebugPanelOpen,
+    focusDebugEntryId,
   } = useAgent();
   const navigate = useNavigate();
   useLanguage();
 
   const [input, setInput] = useState('');
   const [showSessionList, setShowSessionList] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
 
   // Task 1c: multimodal image input
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -371,7 +373,7 @@ export const AgentDockPanel: React.FC = () => {
               >
                 <IconPlus />
               </DockIconButton>
-              <DockIconButton title="调试信息" onClick={() => setShowDebug((v) => !v)}>
+              <DockIconButton title="调试信息" onClick={() => setDebugPanelOpen(!debugPanelOpen)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M8 2v3M16 2v3M3 8h18M5 8v8a4 4 0 0 0 4 4h6a4 4 0 0 0 4-4V8M9 12h6M9 16h6" />
                 </svg>
@@ -637,7 +639,7 @@ export const AgentDockPanel: React.FC = () => {
       </div>
 
       {/* 调试面板：渲染在主面板外部，避免被 backdropFilter 创建包含块导致 fixed 定位失效 */}
-      {dockOpen && showDebug && <DebugPanel onClose={() => setShowDebug(false)} />}
+      {dockOpen && debugPanelOpen && <DebugPanel onClose={() => setDebugPanelOpen(false)} focusEntryId={focusDebugEntryId} />}
     </>
   );
 };

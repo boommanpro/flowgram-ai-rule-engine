@@ -72,6 +72,8 @@ export interface DisplayMessage {
     request?: any;
     response?: any;
   };
+  // 关联的调试条目 ID，用于点击消息跳转调试面板
+  debugEntryId?: string;
   // New: for subagent
   subagentSteps?: Array<{
     action: string;
@@ -93,7 +95,9 @@ export interface SseHandlers {
   onError?: (message: string) => void;
   // New debug events
   onDebugRequest?: (data: { messages: any[]; model: string; temperature: number; timestamp: number }) => void;
-  onDebugResponse?: (data: { content: string; toolCalls: number; durationMs: number }) => void;
+  onDebugResponse?: (data: { content: string; toolCalls: any[]; toolCallsCount: number; durationMs: number }) => void;
+  /** 工具执行结果调试事件 — 展示每个 tool_call 的实际执行结果 */
+  onDebugToolResult?: (data: { results: Array<{ toolCallId: string; rejected: boolean; result: string }>; count: number }) => void;
   /** 上下文加载详情 — 展示本次请求加载了哪些工具/知识/图谱 */
   onContextLoaded?: (data: {
     model: string;
@@ -105,8 +109,13 @@ export interface SseHandlers {
     systemPromptChars: number;
     ragChunks: number;
     ragMs: number;
+    ragContext?: string;
+    nodeKbCount?: number;
+    nodeKbMs?: number;
+    nodeKbContext?: string;
     graphNodes: number;
     graphMs: number;
+    graphContext?: string;
     toolsCount: number;
     toolsMs: number;
     totalMessages: number;

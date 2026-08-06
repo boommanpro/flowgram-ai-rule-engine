@@ -13,6 +13,7 @@ import {
   type WorkflowPortEntity,
   type WorkflowLineEntity,
 } from '@flowgram.ai/free-layout-editor';
+import { FlowNodeFormData } from '@flowgram.ai/form-core';
 import { usePanelManager } from '@flowgram.ai/panel-manager-plugin';
 
 import { setCanvasContext, type CanvasContext } from './tools';
@@ -61,7 +62,9 @@ export const EditorCanvasBridge: React.FC = () => {
         parentId?: string
       ) => {
         const pos = position || ctx.document.getNodeDefaultPosition(type);
-        return ctx.document.createWorkflowNodeByType(type, pos, data, parentId);
+        // createWorkflowNodeByType 的第三参数是 WorkflowNodeJSON（{id,type,meta,data,...}），
+        // 而非裸 data。需要包装成 { data } 才能让框架读到表单数据并传给 form 引擎初始化。
+        return ctx.document.createWorkflowNodeByType(type, pos, { data }, parentId);
       },
 
       getNodeById: (id: string) => ctx.document.getNode(id),
@@ -122,10 +125,23 @@ export const EditorCanvasBridge: React.FC = () => {
       updateNodeData: (nodeId: string, data: Record<string, any>) => {
         const node = ctx.document.getNode(nodeId) as any;
         if (!node) return false;
-        const currentData = node.data || {};
+        // 节点表单数据由 form 引擎（FlowNodeFormData）管理，
+        // node.updateData / node.data 都不存在；必须通过 formData.updateFormValues 写回。
+        try {
+          const formData = node.getData?.(FlowNodeFormData);
+          if (formData?.formModel?.initialized) {
+            const current = (typeof formData.toJSON === 'function' ? formData.toJSON() : {}) || {};
+            const merged = deepMergeNodeData(current, data);
+            formData.updateFormValues(merged);
+            return true;
+          }
+        } catch {
+          // form 引擎不可用时退回 extInfo 全量更新
+        }
+        const currentData = node.getJSONData?.() || {};
         const merged = deepMergeNodeData(currentData, data);
-        if (node.updateData) {
-          node.updateData(merged);
+        if (node.updateExtInfo) {
+          node.updateExtInfo(merged, true);
         }
         return true;
       },

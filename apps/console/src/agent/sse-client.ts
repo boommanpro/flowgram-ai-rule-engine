@@ -146,6 +146,9 @@ function handleEvent(
     case 'debug_response':
       handlers.onDebugResponse?.(data);
       break;
+    case 'debug_tool_result':
+      handlers.onDebugToolResult?.(data);
+      break;
     case 'context_loaded':
       handlers.onContextLoaded?.(data);
       break;

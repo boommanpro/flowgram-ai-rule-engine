@@ -18,6 +18,7 @@ interface DebugEntry {
   request?: any;
   response?: any;
   context?: any;
+  toolResults?: any;
 }
 
 const ACCENT = '#4d53e8';
@@ -40,16 +41,32 @@ const getEntryPrefix = (entry: DebugEntry): string => {
   return entry.request?.model || entry.context?.model || '—';
 };
 
-export const DebugPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+export const DebugPanel: React.FC<{ onClose?: () => void; focusEntryId?: string | null }> = ({ onClose, focusEntryId }) => {
   const { debugEntries, clearDebugEntries, currentSessionKey } = useAgent();
   useLanguage();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   // 当前查看原始数据的条目
   const [rawEntry, setRawEntry] = useState<DebugEntry | null>(null);
+  // 列表容器引用，用于聚焦时滚动定位
+  const listRef = React.useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setExpandedIds(new Set());
   }, [currentSessionKey]);
+
+  // 点击消息跳转：聚焦到指定 entry，自动展开并打开 Raw 面板
+  useEffect(() => {
+    if (!focusEntryId) return;
+    const target = debugEntries.find((e) => e.id === focusEntryId);
+    if (!target) return;
+    setExpandedIds((prev) => new Set(prev).add(focusEntryId));
+    setRawEntry(target);
+    // 滚动到列表中的对应条目
+    setTimeout(() => {
+      const el = listRef.current?.querySelector(`[data-entry-id="${focusEntryId}"]`);
+      if (el) (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 60);
+  }, [focusEntryId, debugEntries]);
 
   // 调试信息持久化由 AgentContext 统一管理，避免会话切换时竞态覆盖
 
@@ -163,7 +180,7 @@ export const DebugPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+        <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
           {reversed.length === 0 ? (
             <div style={{ textAlign: 'center', color: '#999', fontSize: '12px', marginTop: '40px' }}>
               {t('agent.debugEmpty')}
@@ -175,6 +192,7 @@ export const DebugPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
               return (
                 <div
                   key={entry.id}
+                  data-entry-id={entry.id}
                   style={{
                     border: '1px solid #e8e8ea',
                     borderRadius: '6px',
@@ -202,7 +220,7 @@ export const DebugPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                       <span style={{ color: '#999', fontSize: '11px' }}>
                         {new Date(entry.timestamp).toLocaleString()}
                         {entry.response ? ` · ${entry.response.durationMs}ms` : ' · pending'}
-                        {entry.response?.toolCalls > 0 && ` · ${entry.response.toolCalls} tool calls`}
+                        {entry.response?.toolCallsCount > 0 && ` · ${entry.response.toolCallsCount} tool calls`}
                       </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
@@ -246,6 +264,33 @@ export const DebugPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                         <ContextBadge label={t('agent.debugSystemPrompt')} value={`${ctx.systemPromptChars} 字`} color="#555" />
                         <ContextBadge label={t('agent.debugTotalMessages')} value={`${ctx.totalMessages}`} color="#555" />
                       </div>
+                      {/* RAG 命中内容（可折叠） */}
+                      {ctx.ragContext && ctx.ragContext.trim() && (
+                        <ContextContentBlock
+                          label={`RAG 知识库命中 (${ctx.ragChunks} 条, ${ctx.ragMs}ms)`}
+                          content={ctx.ragContext}
+                          color="#d46b08"
+                          bg="#fff7e6"
+                        />
+                      )}
+                      {/* 节点知识库内容（可折叠） */}
+                      {ctx.nodeKbContext && ctx.nodeKbContext.trim() && (
+                        <ContextContentBlock
+                          label={`节点知识库 (${ctx.nodeKbCount} 条, ${ctx.nodeKbMs}ms)`}
+                          content={ctx.nodeKbContext}
+                          color="#531dab"
+                          bg="#f9f0ff"
+                        />
+                      )}
+                      {/* 知识图谱内容（可折叠） */}
+                      {ctx.graphContext && ctx.graphContext.trim() && (
+                        <ContextContentBlock
+                          label={`知识图谱 (${ctx.graphNodes} 节点, ${ctx.graphMs}ms)`}
+                          content={ctx.graphContext}
+                          color="#cf1322"
+                          bg="#fff1f0"
+                        />
+                      )}
                     </div>
                   )}
 
@@ -340,7 +385,7 @@ export const DebugPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                       {entry.response && (
                         <div>
                           <div style={{ fontWeight: 600, marginBottom: '4px', color: '#1a1a1a' }}>
-                            {t('agent.debugResponse')} ({entry.response.durationMs}ms, {entry.response.toolCalls} tool calls)
+                            {t('agent.debugResponse')} ({entry.response.durationMs}ms, {entry.response.toolCallsCount ?? 0} tool calls)
                           </div>
                           <pre
                             style={{
@@ -355,6 +400,58 @@ export const DebugPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                           >
                             {entry.response.content?.substring(0, 500)}
                           </pre>
+                          {/* 完整 tool_calls 数组（含 id/function.name/arguments） */}
+                          {Array.isArray(entry.response.toolCalls) && entry.response.toolCalls.length > 0 && (
+                            <div style={{ marginTop: '6px' }}>
+                              <div style={{ fontWeight: 600, marginBottom: '2px', color: '#d46b08' }}>
+                                Tool Calls ({entry.response.toolCalls.length}):
+                              </div>
+                              {entry.response.toolCalls.map((tc: any, idx: number) => (
+                                <div key={idx} style={{
+                                  background: '#fff7e6',
+                                  border: '1px solid #ffd591',
+                                  borderRadius: '4px',
+                                  padding: '4px 6px',
+                                  marginBottom: '4px',
+                                  fontSize: '10px',
+                                }}>
+                                  <div style={{ fontWeight: 500, color: '#d46b08' }}>
+                                    {idx + 1}. {tc.function?.name || 'unknown'}
+                                    <span style={{ color: '#999', fontWeight: 400, marginLeft: '6px' }}>{tc.id}</span>
+                                  </div>
+                                  <pre style={{ margin: '2px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: '#666' }}>
+                                    {tc.function?.arguments || '{}'}
+                                  </pre>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {/* 工具执行结果 */}
+                          {entry.toolResults && (
+                            <div style={{ marginTop: '6px' }}>
+                              <div style={{ fontWeight: 600, marginBottom: '2px', color: '#389e0d' }}>
+                                Tool Results ({entry.toolResults.count ?? (entry.toolResults.results?.length || 0)}):
+                              </div>
+                              {entry.toolResults.results?.map((r: any, idx: number) => (
+                                <div key={idx} style={{
+                                  background: r.rejected ? '#fff1f0' : '#f6ffed',
+                                  border: `1px solid ${r.rejected ? '#ffa39e' : '#b7eb8f'}`,
+                                  borderRadius: '4px',
+                                  padding: '4px 6px',
+                                  marginBottom: '4px',
+                                  fontSize: '10px',
+                                }}>
+                                  <div style={{ fontWeight: 500, color: r.rejected ? '#cf1322' : '#389e0d' }}>
+                                    {idx + 1}. {r.rejected ? 'rejected' : 'ok'}
+                                    <span style={{ color: '#999', fontWeight: 400, marginLeft: '6px' }}>{r.toolCallId}</span>
+                                  </div>
+                                  <pre style={{ margin: '2px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: '#666' }}>
+                                    {r.result?.substring(0, 300)}
+                                  </pre>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -409,11 +506,14 @@ const RawDetailOverlay: React.FC<{ entry: DebugEntry; onClose: () => void }> = (
     // 组装成标准 OpenAI 响应格式，便于对照
     const resp = entry.response;
     const message: any = { role: 'assistant', content: resp.content || '' };
+    if (Array.isArray(resp.toolCalls) && resp.toolCalls.length > 0) {
+      message.tool_calls = resp.toolCalls;
+    }
     const openaiResp: any = {
       id: 'chatcmpl-debug',
       object: 'chat.completion',
       model: entry.request?.model || 'unknown',
-      choices: [{ index: 0, message, finish_reason: resp.toolCalls > 0 ? 'tool_calls' : 'stop' }],
+      choices: [{ index: 0, message, finish_reason: (resp.toolCallsCount ?? 0) > 0 ? 'tool_calls' : 'stop' }],
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
     };
     return JSON.stringify(openaiResp, null, 2);
@@ -493,7 +593,7 @@ const RawDetailOverlay: React.FC<{ entry: DebugEntry; onClose: () => void }> = (
             <span style={{ fontSize: '11px', color: '#999' }}>
               {new Date(entry.timestamp).toLocaleString()}
               {entry.response ? ` · ${entry.response.durationMs}ms` : ' · pending'}
-              {entry.response?.toolCalls > 0 && ` · ${entry.response.toolCalls} tool calls`}
+              {entry.response?.toolCallsCount > 0 && ` · ${entry.response.toolCallsCount} tool calls`}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -778,5 +878,28 @@ const ContextBadge: React.FC<{ label: string; value: string; color: string }> = 
     <span style={{ color, fontWeight: 500 }}>{value}</span>
   </span>
 );
+
+/** 上下文内容块（可折叠）— 展示 RAG / 节点知识库 / 图谱 命中的具体内容 */
+const ContextContentBlock: React.FC<{ label: string; content: string; color: string; bg: string }> = ({ label, content, color, bg }) => {
+  const [open, setOpen] = useState(false);
+  const preview = content.length > 100 ? content.slice(0, 100).replace(/\n/g, ' ') + '…' : content.replace(/\n/g, ' ');
+  return (
+    <div style={{ marginTop: '4px', border: `1px solid ${color}33`, borderRadius: '4px', overflow: 'hidden' }}>
+      <div
+        onClick={() => setOpen((v) => !v)}
+        style={{ cursor: 'pointer', padding: '3px 6px', background: bg, fontSize: '10px', color, display: 'flex', alignItems: 'center', gap: '4px' }}
+      >
+        <span>{open ? '▾' : '▸'}</span>
+        <span style={{ fontWeight: 600 }}>{label}</span>
+        {!open && <span style={{ color: '#999', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{preview}</span>}
+      </div>
+      {open && (
+        <pre style={{ margin: 0, padding: '6px', background: '#fafafa', fontSize: '10px', lineHeight: 1.4, whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: '#555', maxHeight: '200px', overflowY: 'auto' }}>
+{content}
+        </pre>
+      )}
+    </div>
+  );
+};
 
 export default DebugPanel;

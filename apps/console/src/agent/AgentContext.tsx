@@ -54,8 +54,16 @@ interface AgentContextValue {
     request?: any;
     response?: any;
     context?: any;
+    toolResults?: any;
   }>;
   clearDebugEntries: () => void;
+  /** 调试面板是否打开 */
+  debugPanelOpen: boolean;
+  setDebugPanelOpen: (open: boolean) => void;
+  /** 当前聚焦的调试条目 ID（点击消息跳转时设置） */
+  focusDebugEntryId: string | null;
+  /** 打开调试面板并聚焦到指定条目 */
+  openDebugEntry: (entryId: string) => void;
 
   setToolExecutor: (executor: ToolExecutor) => void;
   resolveConfirm: (approved: boolean) => void;
@@ -159,7 +167,15 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     request?: any;
     response?: any;
     context?: any;
+    toolResults?: any;
   }>>([]);
+  // 调试面板开关 + 聚焦条目（点击消息跳转用）
+  const [debugPanelOpen, setDebugPanelOpen] = useState(false);
+  const [focusDebugEntryId, setFocusDebugEntryId] = useState<string | null>(null);
+  const openDebugEntry = (entryId: string) => {
+    setFocusDebugEntryId(entryId);
+    setDebugPanelOpen(true);
+  };
 
   const location = useLocation();
   const toolExecutorRef = useRef<ToolExecutor | null>(null);
@@ -711,6 +727,14 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
           if (sessionKey === currentSessionKeyRef.current) {
             // 仍在原会话，更新视图
             setDebugEntries((prev) => [...prev, entry]);
+            // 关联 entryId 到当前 assistant 消息，支持点击消息跳转调试面板
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === currentAssistantId && !m.debugEntryId
+                  ? { ...m, debugEntryId: entryId }
+                  : m
+              )
+            );
           } else {
             // 已切走，直接落原会话 localStorage，不污染当前视图
             persistDebugEntryToSession(sessionKey, entry);
@@ -769,6 +793,21 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
           if (sessionKey === currentSessionKeyRef.current) {
             // 可扩展：在聊天界面显示警告提示
             console.warn(`[Token Warning] ${data.percentage}% (${data.estimated}/${data.limit}): ${data.message}`);
+          }
+        },
+        // 工具执行结果调试事件 — 把每个 tool_call 的实际结果存到最近一个有 response 的 entry
+        onDebugToolResult: (data: any) => {
+          if (sessionKey === currentSessionKeyRef.current) {
+            setDebugEntries((prev) => {
+              const updated = [...prev];
+              for (let i = updated.length - 1; i >= 0; i--) {
+                if (updated[i].response && !updated[i].toolResults) {
+                  updated[i] = { ...updated[i], toolResults: data };
+                  break;
+                }
+              }
+              return updated;
+            });
           }
         },
       };
@@ -1010,6 +1049,10 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     compactContext,
     debugEntries,
     clearDebugEntries: () => setDebugEntries([]),
+    debugPanelOpen,
+    setDebugPanelOpen,
+    focusDebugEntryId,
+    openDebugEntry,
     setToolExecutor,
     resolveConfirm,
     createSession,

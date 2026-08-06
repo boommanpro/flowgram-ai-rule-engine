@@ -149,12 +149,24 @@ public class AgentChatService {
         executor.execute(() -> {
             try {
                 // 1. 保存所有 tool 消息
+                JSONArray toolResultsDebug = new JSONArray();
                 for (ToolResultInput.ResultItem item : input.getResults()) {
                     String content = item.isRejected()
                         ? "{\"error\":\"user rejected\"}"
                         : (item.getResult() != null ? item.getResult() : "{}");
                     saveMessage(input.getSessionKey(), "tool", content, null, item.getToolCallId(), null, null);
+                    toolResultsDebug.add(new JSONObject()
+                        .set("toolCallId", item.getToolCallId())
+                        .set("rejected", item.isRejected())
+                        .set("result", content));
                 }
+                // 1b. 发送 tool 结果调试事件，让调试面板能展示每个工具的实际执行结果
+                emitter.send(SseEmitter.event().name("debug_tool_result").data(
+                    new JSONObject()
+                        .set("results", toolResultsDebug)
+                        .set("count", toolResultsDebug.size())
+                        .toString()
+                ));
                 // 2. 流式调 LLM
                 streamLlm(emitter, input.getSessionKey(), input.getLocale(), null);
                 emitter.send(SseEmitter.event().name("done").data("{}"));
@@ -485,10 +497,13 @@ public class AgentChatService {
             .set("systemPromptChars", systemPrompt.length())
             .set("ragChunks", ragChunks)
             .set("ragMs", ragMs)
+            .set("ragContext", ragContext != null ? ragContext : "")
             .set("nodeKbCount", nodeKbCount)
             .set("nodeKbMs", nodeKbMs)
+            .set("nodeKbContext", nodeKbContext != null ? nodeKbContext : "")
             .set("graphNodes", graphNodes)
             .set("graphMs", graphMs)
+            .set("graphContext", graphContext != null ? graphContext : "")
             .set("templateCount", templateCount)
             .set("templateMs", templateMs)
             .set("toolsCount", toolsSchema.size())
@@ -598,10 +613,14 @@ public class AgentChatService {
         saveMessage(sessionKey, "assistant", content, toolCallsJson, null, null, null);
 
         // === 14. 发送 debug_response 事件 ===
+        // 记录完整 tool_calls 数组（含 id/function.name/arguments），而非仅数量，
+        // 让调试面板可以展示模型实际请求了哪些工具调用
+        List<JSONObject> toolCallsList = new ArrayList<>(toolCallsMap.values());
         emitter.send(SseEmitter.event().name("debug_response").data(
             new JSONObject()
                 .set("content", content)
-                .set("toolCalls", toolCallsMap.size())
+                .set("toolCalls", toolCallsList)
+                .set("toolCallsCount", toolCallsList.size())
                 .set("durationMs", durationMs)
                 .toString()
         ));
