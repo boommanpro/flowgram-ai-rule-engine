@@ -30,9 +30,13 @@ import { useLanguage, t } from '../../i18n';
 export const DemoTools = ({
   hideSaveAndTestRun = false,
   hideSave = false,
+  hideRunHistory = false,
+  hideReportEditor = false,
 }: {
   hideSaveAndTestRun?: boolean;
   hideSave?: boolean;
+  hideRunHistory?: boolean;
+  hideReportEditor?: boolean;
 } = {}) => {
   const { history, playground } = useClientContext();
   useLanguage();
@@ -83,12 +87,12 @@ export const DemoTools = ({
             onClick={() => history.redo()}
           />
         </Tooltip>
-        <RunHistoryButton />
-        <Divider layout="vertical" style={{ height: '16px' }} margin={3} />
+        {!hideRunHistory && <RunHistoryButton />}
+        {!hideRunHistory && <Divider layout="vertical" style={{ height: '16px' }} margin={3} />}
         <AddNode disabled={playground.config.readonly} />
         <Divider layout="vertical" style={{ height: '16px' }} margin={3} />
         {!hideSaveAndTestRun && !hideSave && <Save disabled={playground.config.readonly} />}
-        <ReportEditor />
+        {!hideReportEditor && <ReportEditor />}
         <SchemaEditor />
         {!hideSaveAndTestRun && <TestRunButton disabled={playground.config.readonly} />}
       </ToolSection>

@@ -170,7 +170,7 @@ const AiGenModal: React.FC<AiGenModalProps> = ({ visible, onClose, defaultPrompt
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
-          <Typography.Text strong style={{ fontSize: 13 }}>生成提示词</Typography.Text>
+          <Typography.Text strong style={{ fontSize: 13 }}>{t('agent.config.generatePrompt')}</Typography.Text>
           <TextArea
             value={prompt}
             onChange={(v) => setPrompt(v)}
@@ -188,16 +188,16 @@ const AiGenModal: React.FC<AiGenModalProps> = ({ visible, onClose, defaultPrompt
           >
             生成
           </Button>
-          <Button onClick={onClose}>取消</Button>
+          <Button onClick={onClose}>{t('common.cancel')}</Button>
         </div>
         {generating && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#888', fontSize: 13 }}>
-            <Spin /> 正在生成…
+            <Spin /> {t('agent.config.generating')}
           </div>
         )}
         {result && (
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>生成结果（可编辑后保存）</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('agent.config.generateResult')}</Typography.Text>
             <TextArea
               value={result}
               onChange={(v) => setResult(v)}
@@ -366,7 +366,7 @@ const ToolDefinitionTab: React.FC = () => {
       dataIndex: 'enabled',
       key: 'enabled',
       width: 80,
-      render: (val: boolean) => (val ? <Tag color="green" size="small">启用</Tag> : <Tag color="grey" size="small">禁用</Tag>),
+      render: (val: boolean) => (val ? <Tag color="green" size="small">{t('common.enabled')}</Tag> : <Tag color="grey" size="small">{t('common.disabled')}</Tag>),
     },
     {
       title: '操作',
@@ -435,7 +435,7 @@ const ToolDefinitionTab: React.FC = () => {
             />
           </div>
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>描述</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('common.description')}</Typography.Text>
             <Input
               value={form.description}
               disabled
@@ -452,7 +452,7 @@ const ToolDefinitionTab: React.FC = () => {
             />
           </div>
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>默认策略</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('agent.config.defaultPolicy')}</Typography.Text>
             <Select
               value={form.defaultPolicy}
               onChange={(v) => setForm({ ...form, defaultPolicy: v as string })}
@@ -474,14 +474,14 @@ const ToolDefinitionTab: React.FC = () => {
             />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Typography.Text strong style={{ fontSize: 13 }}>启用</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('common.enabled')}</Typography.Text>
             <Switch
               checked={!!form.enabled}
               onChange={(v) => setForm({ ...form, enabled: v })}
             />
           </div>
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>排序</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('common.sort')}</Typography.Text>
             <Input
               value={String(form.sortOrder ?? 0)}
               onChange={(v) => setForm({ ...form, sortOrder: Number(v) || 0 })}
@@ -489,7 +489,7 @@ const ToolDefinitionTab: React.FC = () => {
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <Button onClick={() => setModalVisible(false)}>取消</Button>
+            <Button onClick={() => setModalVisible(false)}>{t('common.cancel')}</Button>
             <Button theme="solid" style={{ background: ACCENT }} loading={saving} onClick={handleSave}>
               保存
             </Button>
@@ -627,7 +627,7 @@ const PermissionTab: React.FC = () => {
         }}
       >
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ fontSize: 13, color: '#666', flexShrink: 0, fontWeight: 500 }}>快捷操作：</span>
+          <span style={{ fontSize: 13, color: '#666', flexShrink: 0, fontWeight: 500 }}>{t('agent.config.quickActions')}：</span>
           <Button
             size="small"
             disabled={batchLoading}
@@ -910,10 +910,10 @@ const RagKnowledgeTab: React.FC = () => {
         <Button theme="solid" style={{ background: ACCENT }} onClick={openCreate}>
           新建
         </Button>
-        <Button onClick={() => setAiVisible(true)}>AI 生成</Button>
-        <Button onClick={() => setSearchVisible(true)}>检索预览</Button>
-        <Button onClick={handleReembed}>重新 Embedding</Button>
-        <Button onClick={() => void load()}>刷新</Button>
+        <Button onClick={() => setAiVisible(true)}>{t('agent.config.aiGenerate')}</Button>
+        <Button onClick={() => setSearchVisible(true)}>{t('agent.config.retrievalPreview')}</Button>
+        <Button onClick={handleReembed}>{t('agent.config.reembed')}</Button>
+        <Button onClick={() => void load()}>{t('agent.config.refresh')}</Button>
       </div>
 
       <Table
@@ -933,7 +933,7 @@ const RagKnowledgeTab: React.FC = () => {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>标题</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('common.title')}</Typography.Text>
             <Input
               value={form.title}
               onChange={(v) => setForm({ ...form, title: v })}
@@ -941,7 +941,7 @@ const RagKnowledgeTab: React.FC = () => {
             />
           </div>
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>来源</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('common.source')}</Typography.Text>
             <Input
               value={form.source}
               onChange={(v) => setForm({ ...form, source: v })}
@@ -949,7 +949,7 @@ const RagKnowledgeTab: React.FC = () => {
             />
           </div>
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>内容</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('common.content')}</Typography.Text>
             <TextArea
               value={form.content}
               onChange={(v) => setForm({ ...form, content: v })}
@@ -967,7 +967,7 @@ const RagKnowledgeTab: React.FC = () => {
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <Button onClick={() => setModalVisible(false)}>取消</Button>
+            <Button onClick={() => setModalVisible(false)}>{t('common.cancel')}</Button>
             <Button theme="solid" style={{ background: ACCENT }} loading={saving} onClick={handleSave}>
               保存
             </Button>
@@ -1011,7 +1011,7 @@ const RagKnowledgeTab: React.FC = () => {
             <Spin />
           </div>
         ) : searchResults.length === 0 ? (
-          <div style={{ color: '#999', padding: 16, textAlign: 'center' }}>无结果，请输入关键词后点击检索</div>
+          <div style={{ color: '#999', padding: 16, textAlign: 'center' }}>{t('agent.config.noResult')}</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {searchResults.map((r, idx) => (
@@ -1295,7 +1295,7 @@ const KnowledgeGraphTab: React.FC = () => {
         <Button theme="solid" style={{ background: ACCENT }} onClick={() => setSubgraphVisible(true)}>
           子图检索
         </Button>
-        <Button onClick={() => { void loadNodes(); void loadEdges(); }}>刷新</Button>
+        <Button onClick={() => { void loadNodes(); void loadEdges(); }}>{t('agent.config.refresh')}</Button>
       </div>
 
       <Tabs type="line" activeKey={tabKey} onChange={(k) => setTabKey(k)}>
@@ -1356,7 +1356,7 @@ const KnowledgeGraphTab: React.FC = () => {
             />
           </div>
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>标题</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('common.title')}</Typography.Text>
             <Input
               value={nodeForm.title}
               onChange={(v) => setNodeForm({ ...nodeForm, title: v })}
@@ -1373,7 +1373,7 @@ const KnowledgeGraphTab: React.FC = () => {
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <Button onClick={() => setNodeModalVisible(false)}>取消</Button>
+            <Button onClick={() => setNodeModalVisible(false)}>{t('common.cancel')}</Button>
             <Button theme="solid" style={{ background: ACCENT }} loading={nodeSaving} onClick={handleSaveNode}>
               保存
             </Button>
@@ -1424,7 +1424,7 @@ const KnowledgeGraphTab: React.FC = () => {
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <Button onClick={() => setEdgeModalVisible(false)}>取消</Button>
+            <Button onClick={() => setEdgeModalVisible(false)}>{t('common.cancel')}</Button>
             <Button theme="solid" style={{ background: ACCENT }} loading={edgeSaving} onClick={handleSaveEdge}>
               保存
             </Button>
@@ -2190,7 +2190,7 @@ const PromptEditorTab: React.FC = () => {
             <Spin />
           </div>
         ) : historyList.length === 0 ? (
-          <div style={{ color: '#999', padding: 16, textAlign: 'center' }}>无历史版本</div>
+          <div style={{ color: '#999', padding: 16, textAlign: 'center' }}>{t('agent.config.noHistory')}</div>
         ) : (
           <Table
             columns={[
@@ -2236,7 +2236,7 @@ const PromptEditorTab: React.FC = () => {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>ConfigKey（唯一标识）</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('agent.config.configKey')}</Typography.Text>
             <Input
               value={createForm.configKey}
               onChange={(v) => setCreateForm({ ...createForm, configKey: v })}
@@ -2245,7 +2245,7 @@ const PromptEditorTab: React.FC = () => {
             />
           </div>
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>标题</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('common.title')}</Typography.Text>
             <Input
               value={createForm.title}
               onChange={(v) => setCreateForm({ ...createForm, title: v })}
@@ -2254,7 +2254,7 @@ const PromptEditorTab: React.FC = () => {
             />
           </div>
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>内容</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('common.content')}</Typography.Text>
             <TextArea
               value={createForm.content}
               onChange={(v) => setCreateForm({ ...createForm, content: v })}
@@ -2264,7 +2264,7 @@ const PromptEditorTab: React.FC = () => {
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <Button onClick={() => setCreateModalVisible(false)}>取消</Button>
+            <Button onClick={() => setCreateModalVisible(false)}>{t('common.cancel')}</Button>
             <Button theme="solid" style={{ background: ACCENT }} onClick={handleCreate}>
               创建
             </Button>
@@ -2286,7 +2286,7 @@ const PromptEditorTab: React.FC = () => {
             <Input value={renameItem?.configKey || ''} disabled style={{ marginTop: 6 }} />
           </div>
           <div>
-            <Typography.Text strong style={{ fontSize: 13 }}>新标题</Typography.Text>
+            <Typography.Text strong style={{ fontSize: 13 }}>{t('agent.config.newTitle')}</Typography.Text>
             <Input
               value={renameTitle}
               onChange={(v) => setRenameTitle(v)}
@@ -2295,7 +2295,7 @@ const PromptEditorTab: React.FC = () => {
             />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-            <Button onClick={() => setRenameVisible(false)}>取消</Button>
+            <Button onClick={() => setRenameVisible(false)}>{t('common.cancel')}</Button>
             <Button theme="solid" style={{ background: ACCENT }} onClick={handleRename}>
               确认
             </Button>

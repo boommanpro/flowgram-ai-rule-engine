@@ -15,6 +15,7 @@ import { nanoid } from 'nanoid';
 
 import { agentApi } from './api';
 import { streamChat, streamToolResult, streamCompact, streamSubagent, type ToolResultItem } from './sse-client';
+import { getCanvasContext } from './tools';
 import type {
   AgentSession,
   AgentMessage,
@@ -249,6 +250,38 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
 
   const getPageContextJson = useCallback((): string => {
     const ctx: PageContext = { route: location.pathname };
+
+    // 提取工作流编码（编辑器路由 /editor/:code）
+    const editorMatch = location.pathname.match(/^\/editor\/(.+)$/);
+    if (editorMatch) {
+      ctx.workflowCode = decodeURIComponent(editorMatch[1]);
+    }
+
+    // 注入画布摘要（未保存的画布数据也能获取，让 AI 感知当前画布状态）
+    const canvas = getCanvasContext();
+    if (canvas) {
+      try {
+        const json = canvas.toJSON();
+        if (json && Array.isArray(json.nodes)) {
+          ctx.canvasSummary = {
+            nodes: json.nodes.map((n: any) => ({
+              id: n.id || '',
+              type: n.type || '',
+              title: n.data?.title || n.data?.name || n.title || '',
+            })),
+            edges: (json.edges || []).map((e: any) => ({
+              from: e.sourceNodeID || e.source || '',
+              to: e.targetNodeID || e.target || '',
+              fromPort: e.sourcePortID || e.sourcePort,
+            })),
+            selectedNodeId: canvas.selectedNodeId,
+          };
+        }
+      } catch {
+        // canvas not ready, skip
+      }
+    }
+
     return JSON.stringify(ctx);
   }, [location.pathname]);
 
@@ -543,9 +576,12 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
 
       const pendingToolCalls: ToolCallEvent[] = [];
       let errorMsg: string | null = null;
+      // 追踪当前轮 assistant 输出内容，用于检测 ::options 澄清选项
+      let assistantContent = '';
 
       const handlers = {
         onToken: (content: string) => {
+          assistantContent += content;
           setMessages((prev) =>
             prev.map((m) =>
               m.id === currentAssistantId
@@ -645,8 +681,12 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
         await streamChat(sessionKey, text, getPageContextJson(), handlers, signal, images);
 
         // 后续轮（tool 结果回灌）
+        // 如果回复包含 ::options（需要用户澄清/选择），不自动处理工具调用，等待用户选择
         let safetyCounter = 0;
-        while (pendingToolCalls.length > 0 && !errorMsg && safetyCounter < 20) {
+        while (
+          !assistantContent.includes('::options') &&
+          pendingToolCalls.length > 0 && !errorMsg && safetyCounter < 20
+        ) {
           safetyCounter++;
           const calls = pendingToolCalls.splice(0, pendingToolCalls.length);
           const results: ToolResultItem[] = [];
@@ -679,6 +719,8 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
               timestamp: Date.now(),
             },
           ]);
+          // 重置内容追踪，用于下一轮检测
+          assistantContent = '';
           await streamToolResult(sessionKey, results, handlers, signal);
         }
 

@@ -11,7 +11,6 @@ import {
   useRefresh,
   useClientContext,
 } from '@flowgram.ai/free-layout-editor';
-import { Button } from '@douyinfe/semi-ui';
 import { IconPlay } from '@douyinfe/semi-icons';
 
 import { FlowNodeMeta } from '../../typings';
@@ -97,19 +96,47 @@ export const NodeFormPanel: React.FC<NodeFormPanelProps> = ({ nodeId }) => {
   return (
     <IsSidebarContext.Provider value={true}>
       <PlaygroundEntityContext.Provider key={node.id} value={node}>
-        <SidebarNodeRenderer node={node} />
-        {!playground.config.readonly && (
-          <div style={{ padding: '8px 16px 16px', borderTop: '1px solid rgba(82,100,154,0.08)' }}>
-            <Button
-              block
-              icon={<IconPlay size="small" />}
-              onClick={handleTestNode}
-              style={{ borderRadius: 6 }}
-            >
-              {t('singleNode.testThisNode')}
-            </Button>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+          <div style={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+            <SidebarNodeRenderer node={node} />
           </div>
-        )}
+          {!playground.config.readonly && (
+            <div style={{
+              flexShrink: 0,
+              height: 62,
+              background: '#fbfbfb',
+              borderTop: '1px solid rgba(82,100,154,0.13)',
+              borderRadius: '0 0 8px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 16px',
+              boxSizing: 'border-box',
+            }}>
+              <button
+                onClick={handleTestNode}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  width: '100%',
+                  height: 40,
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'rgba(0, 178, 60, 1)',
+                  color: '#fff',
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                <IconPlay size="small" />
+                {t('singleNode.testThisNode')}
+              </button>
+            </div>
+          )}
+        </div>
       </PlaygroundEntityContext.Provider>
     </IsSidebarContext.Provider>
   );

@@ -10,6 +10,7 @@ import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentKnowledgeChunk;
 import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentMessage;
 import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentPermission;
 import cn.boommanpro.gaia.workflow.infra.manage.entity.AgentSession;
+import cn.boommanpro.gaia.workflow.infra.manage.entity.GaiaWorkflowTemplate;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentGlobalPermissionService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentGraphEdgeService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentGraphNodeService;
@@ -17,6 +18,7 @@ import cn.boommanpro.gaia.workflow.infra.manage.service.AgentKnowledgeChunkServi
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentMessageService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentPermissionService;
 import cn.boommanpro.gaia.workflow.infra.manage.service.AgentSessionService;
+import cn.boommanpro.gaia.workflow.infra.manage.service.GaiaWorkflowTemplateAppService;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -69,6 +71,7 @@ public class AgentChatService {
     private final AgentProperties properties;
     private final AgentModelConfigService modelConfigService;
     private final AgentSessionService sessionService;
+    private final GaiaWorkflowTemplateAppService gaiaWorkflowTemplateAppService;
 
     private final ExecutorService executor = Executors.newCachedThreadPool(r -> {
         Thread t = new Thread(r, "agent-chat");
@@ -86,7 +89,8 @@ public class AgentChatService {
                             AgentToolRegistry toolRegistry,
                             AgentProperties properties,
                             AgentModelConfigService modelConfigService,
-                            AgentSessionService sessionService) {
+                            AgentSessionService sessionService,
+                            GaiaWorkflowTemplateAppService gaiaWorkflowTemplateAppService) {
         this.messageService = messageService;
         this.permissionService = permissionService;
         this.globalPermissionService = globalPermissionService;
@@ -98,6 +102,7 @@ public class AgentChatService {
         this.properties = properties;
         this.modelConfigService = modelConfigService;
         this.sessionService = sessionService;
+        this.gaiaWorkflowTemplateAppService = gaiaWorkflowTemplateAppService;
     }
 
     @PreDestroy
@@ -361,6 +366,17 @@ public class AgentChatService {
         }
         log.info("[{}] Knowledge graph: {} nodes matched in {}ms", sessionKey.substring(0, 8), graphNodes, graphMs);
 
+        // === 5.5 加载可用模板参考 ===
+        long templateStart = System.currentTimeMillis();
+        String templateContext = buildTemplateContext();
+        long templateMs = System.currentTimeMillis() - templateStart;
+        int templateCount = 0;
+        if (templateContext != null) {
+            systemPrompt += "\n\n" + templateContext;
+            templateCount = templateContext.split("模板编码:").length - 1;
+        }
+        log.info("[{}] Template context: {} templates loaded in {}ms", sessionKey.substring(0, 8), templateCount, templateMs);
+
         // === 6. 加载工具定义 ===
         long toolsStart = System.currentTimeMillis();
         JSONArray toolsSchema = toolRegistry.getToolsSchema();
@@ -399,6 +415,8 @@ public class AgentChatService {
             .set("ragMs", ragMs)
             .set("graphNodes", graphNodes)
             .set("graphMs", graphMs)
+            .set("templateCount", templateCount)
+            .set("templateMs", templateMs)
             .set("toolsCount", toolsSchema.size())
             .set("toolsMs", toolsMs)
             .set("totalMessages", messages.size());
@@ -682,6 +700,69 @@ public class AgentChatService {
     }
 
     /**
+     * 构建可用模板参考上下文：查询非删除模板（top 20），解析节点数与节点类型
+     */
+    private String buildTemplateContext() {
+        List<GaiaWorkflowTemplate> templates = gaiaWorkflowTemplateAppService.list(
+            new QueryWrapper<GaiaWorkflowTemplate>()
+                .select("template_code", "template_name", "template_desc", "template_data")
+                .eq("is_deleted", 0)
+                .orderByDesc("id")
+                .last("LIMIT 20"));
+        if (templates == null || templates.isEmpty()) {
+            return null;
+        }
+
+        StringBuilder sb = new StringBuilder("## 可用模板参考\n以下是系统中可用的模板，可能已实现大部分所需功能，可优先复用：\n");
+        for (int i = 0; i < templates.size(); i++) {
+            GaiaWorkflowTemplate t = templates.get(i);
+            sb.append(i + 1).append(". 模板编码: ")
+                .append(t.getTemplateCode() != null ? t.getTemplateCode() : "")
+                .append(", 名称: ")
+                .append(t.getTemplateName() != null ? t.getTemplateName() : "")
+                .append(", 描述: ")
+                .append(t.getTemplateDesc() != null ? t.getTemplateDesc() : "");
+            String nodeSummary = summarizeTemplateNodes(t.getTemplateData());
+            if (nodeSummary != null) {
+                sb.append(", ").append(nodeSummary);
+            }
+            sb.append("\n");
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 解析模板数据 JSON，返回节点数与节点类型摘要
+     */
+    private String summarizeTemplateNodes(String templateData) {
+        if (templateData == null || templateData.isEmpty()) {
+            return null;
+        }
+        try {
+            JSONObject json = JSONUtil.parseObj(templateData);
+            JSONArray nodes = json.getJSONArray("nodes");
+            if (nodes == null || nodes.isEmpty()) {
+                return "节点数: 0";
+            }
+            List<String> nodeTypes = new ArrayList<>();
+            for (int i = 0; i < nodes.size(); i++) {
+                JSONObject node = nodes.getJSONObject(i);
+                if (node == null) {
+                    continue;
+                }
+                String type = node.getStr("type");
+                if (type != null && !type.isEmpty() && !nodeTypes.contains(type)) {
+                    nodeTypes.add(type);
+                }
+            }
+            return "节点数: " + nodes.size() + ", 节点类型: " + nodeTypes;
+        } catch (Exception e) {
+            log.debug("Failed to parse templateData: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * 从历史消息中提取最后一条 user 消息文本
      */
     private String extractLastUserText(List<JSONObject> history) {
@@ -795,7 +876,8 @@ public class AgentChatService {
         }
 
         List<JSONObject> result = new ArrayList<>();
-        for (AgentMessage msg : msgs) {
+        for (int i = 0; i < msgs.size(); i++) {
+            AgentMessage msg = msgs.get(i);
             JSONObject m = new JSONObject().set("role", msg.getRole());
             if (msg.getImages() != null && !msg.getImages().isEmpty() && "user".equals(msg.getRole())) {
                 JSONArray contentArr = new JSONArray();
@@ -804,17 +886,25 @@ public class AgentChatService {
                 }
                 try {
                     JSONArray imgs = JSONUtil.parseArray(msg.getImages());
-                    for (int i = 0; i < imgs.size(); i++) {
+                    for (int j = 0; j < imgs.size(); j++) {
                         contentArr.add(new JSONObject().set("type", "image_url")
-                            .set("image_url", new JSONObject().set("url", imgs.getStr(i))));
+                            .set("image_url", new JSONObject().set("url", imgs.getStr(j))));
                     }
                 } catch (Exception ignored) {}
                 m.set("content", contentArr);
             } else if (msg.getContent() != null && !msg.getContent().isEmpty()) {
                 m.set("content", msg.getContent());
             }
-            if (msg.getToolCalls() != null && !msg.getToolCalls().isEmpty()) {
+            // 仅当下一条消息是 tool 角色时才保留 tool_calls
+            // 避免孤立的 tool_calls（如 ::options 澄清时跳过工具执行）导致 LLM API 报错
+            boolean hasNextTool = (i + 1 < msgs.size()) && "tool".equals(msgs.get(i + 1).getRole());
+            if (msg.getToolCalls() != null && !msg.getToolCalls().isEmpty() && hasNextTool) {
                 m.set("tool_calls", JSONUtil.parseArray(msg.getToolCalls()));
+            } else if (msg.getToolCalls() != null && !msg.getToolCalls().isEmpty()) {
+                // tool_calls 被剥离且无 content 时，补充空 content 以满足 API 要求
+                if (!m.containsKey("content")) {
+                    m.set("content", "");
+                }
             }
             if (msg.getToolCallId() != null && !msg.getToolCallId().isEmpty()) {
                 m.set("tool_call_id", msg.getToolCallId());

@@ -1,12 +1,11 @@
 /**
  * TemplateManagement — 模板管理页面
  * 表格展示模板列表，支持搜索、新建、编辑元数据、删除
- * 点击预览缩略图可放大查看，点击"打开编辑器"进入可视化编辑
+ * 点击"打开编辑器"进入可视化编辑
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { workflowApi, type GaiaWorkflowTemplate } from '../../services/workflow-api';
-import { WorkflowViewer } from '../../editor';
 import type { CSSProperties } from 'react';
 import { useLanguage, t } from '../../i18n';
 
@@ -34,89 +33,6 @@ const formatDateTime = (iso?: string): string => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-const parseTemplateData = (data?: string): any => {
-  if (!data) return { nodes: [], edges: [] };
-  try {
-    return typeof data === 'string' ? JSON.parse(data) : data;
-  } catch {
-    return { nodes: [], edges: [] };
-  }
-};
-
-/* ---------------- Workflow Thumbnail (mini SVG) ---------------- */
-
-const WorkflowThumbnail = ({ data, onClick }: { data?: string; onClick: () => void }) => {
-  let nodes: any[] = [];
-  let edges: any[] = [];
-  try {
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-    nodes = parsed?.nodes || [];
-    edges = parsed?.edges || [];
-  } catch { /* ignore */ }
-
-  if (nodes.length === 0) {
-    return (
-      <div
-        onClick={onClick}
-        style={{
-          width: 120, height: 72, background: '#f5f5f7', borderRadius: 6,
-          border: '1px solid #e8e8ea', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', color: '#999', fontSize: 11, cursor: 'pointer',
-        }}
-      >
-        {t('admin.emptyTemplate')}
-      </div>
-    );
-  }
-
-  const positions = nodes.map((n: any) => n.meta?.position || { x: 0, y: 0 });
-  const minX = Math.min(...positions.map((p: any) => p.x));
-  const minY = Math.min(...positions.map((p: any) => p.y));
-  const maxX = Math.max(...positions.map((p: any) => p.x));
-  const maxY = Math.max(...positions.map((p: any) => p.y));
-  const pad = 40;
-  const w = Math.max(maxX - minX, 100) + pad * 2 + 80;
-  const h = Math.max(maxY - minY, 50) + pad * 2 + 32;
-
-  return (
-    <svg
-      viewBox={`${minX - pad} ${minY - pad} ${w} ${h}`}
-      style={{
-        width: 120, height: 72, cursor: 'pointer',
-        background: '#f5f5f7', borderRadius: 6, border: '1px solid #e8e8ea',
-      }}
-      onClick={onClick}
-    >
-      {edges.map((e: any, i: number) => {
-        const source = nodes.find((n: any) => n.id === e.source);
-        const target = nodes.find((n: any) => n.id === e.target);
-        if (!source || !target) return null;
-        const sx = source.meta?.position?.x || 0;
-        const sy = source.meta?.position?.y || 0;
-        const tx = target.meta?.position?.x || 0;
-        const ty = target.meta?.position?.y || 0;
-        return <line key={i} x1={sx + 80} y1={sy + 16} x2={tx} y2={ty + 16} stroke="#bbb" strokeWidth="1.5" />;
-      })}
-      {nodes.map((n: any, i: number) => {
-        const x = n.meta?.position?.x || 0;
-        const y = n.meta?.position?.y || 0;
-        const isStart = n.type === 'start';
-        const isEnd = n.type === 'end';
-        const fill = isStart || isEnd ? ACCENT : '#f0f0ff';
-        const textColor = isStart || isEnd ? '#fff' : ACCENT;
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={80} height={32} rx={6} fill={fill} stroke={ACCENT} strokeWidth="1" />
-            <text x={x + 40} y={y + 20} textAnchor="middle" fontSize="11" fill={textColor} fontFamily="sans-serif">
-              {(n.data?.title || n.type || '').slice(0, 10)}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-};
-
 /* ---------------- Component ---------------- */
 
 export const TemplateManagement = () => {
@@ -129,7 +45,6 @@ export const TemplateManagement = () => {
   const [templateForm, setTemplateForm] = useState<TemplateForm>(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [previewTemplate, setPreviewTemplate] = useState<GaiaWorkflowTemplate | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -271,7 +186,6 @@ export const TemplateManagement = () => {
                 t('admin.template.name'),
                 t('admin.template.code'),
                 t('admin.template.desc'),
-                t('admin.template.preview'),
                 t('admin.template.createdAt'),
                 t('admin.template.actions'),
               ].map((h) => (
@@ -282,11 +196,11 @@ export const TemplateManagement = () => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} style={emptyTdStyle}>{t('Loading')}</td>
+                <td colSpan={5} style={emptyTdStyle}>{t('Loading')}</td>
               </tr>
             ) : filteredTemplates.length === 0 ? (
               <tr>
-                <td colSpan={6} style={emptyTdStyle}>{t('admin.noData')}</td>
+                <td colSpan={5} style={emptyTdStyle}>{t('admin.noData')}</td>
               </tr>
             ) : (
               filteredTemplates.map((tpl) => (
@@ -294,9 +208,6 @@ export const TemplateManagement = () => {
                   <td style={tdStyle}>{tpl.templateName}</td>
                   <td style={{ ...tdStyle, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 13, color: '#666' }}>{tpl.templateCode}</td>
                   <td style={{ ...tdStyle, color: '#666', maxWidth: 180 }}>{tpl.templateDesc || '—'}</td>
-                  <td style={tdStyle}>
-                    <WorkflowThumbnail data={tpl.templateData} onClick={() => setPreviewTemplate(tpl)} />
-                  </td>
                   <td style={{ ...tdStyle, color: '#666', whiteSpace: 'nowrap' }}>{formatDateTime(tpl.createdAt)}</td>
                   <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                     <button onClick={() => openEditModal(tpl)} style={actionBtnBlueStyle}>{t('Edit')}</button>
@@ -361,59 +272,6 @@ export const TemplateManagement = () => {
               >
                 {submitting ? t('Submitting') : t('Submit')}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ---------- Preview Modal ---------- */}
-      {previewTemplate && (
-        <div onClick={() => setPreviewTemplate(null)} style={modalOverlayStyle}>
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: '#ffffff',
-              borderRadius: 12,
-              width: '90vw',
-              maxWidth: 1200,
-              maxHeight: '90vh',
-              boxShadow: '0 20px 50px -15px rgba(0,0,0,0.25)',
-              boxSizing: 'border-box',
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '16px 24px',
-              borderBottom: '1px solid #e8e8ea',
-              flexShrink: 0,
-            }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>{previewTemplate.templateName}</h3>
-                <span style={{ fontSize: 12, color: '#999' }}>{previewTemplate.templateCode}</span>
-              </div>
-              <button
-                onClick={() => setPreviewTemplate(null)}
-                style={{
-                  padding: '6px 16px',
-                  borderRadius: 8,
-                  border: '1px solid #e8e8ea',
-                  background: '#ffffff',
-                  color: '#1a1a1a',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
-              >
-                {t('Close')}
-              </button>
-            </div>
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-              <WorkflowViewer data={parseTemplateData(previewTemplate.templateData)} height="70vh" />
             </div>
           </div>
         </div>

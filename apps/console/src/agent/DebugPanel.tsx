@@ -22,6 +22,24 @@ interface DebugEntry {
 
 const ACCENT = '#4d53e8';
 
+/** 提取调试条目的内容前缀（最后一条用户消息摘要），方便快速定位 */
+const getEntryPrefix = (entry: DebugEntry): string => {
+  const messages = entry.request?.messages;
+  if (Array.isArray(messages)) {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role === 'user') {
+        const content = typeof m.content === 'string' ? m.content : '';
+        if (content) {
+          const trimmed = content.trim().replace(/\n/g, ' ');
+          return trimmed.length > 40 ? trimmed.substring(0, 40) + '…' : trimmed;
+        }
+      }
+    }
+  }
+  return entry.request?.model || entry.context?.model || '—';
+};
+
 export const DebugPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { debugEntries, clearDebugEntries, currentSessionKey } = useAgent();
   useLanguage();
@@ -188,11 +206,17 @@ export const DebugPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
                       fontSize: '12px',
                     }}
                   >
-                    <span style={{ color: '#555' }}>
-                      {new Date(entry.timestamp).toLocaleString()}
-                      {entry.response ? ` · ${entry.response.durationMs}ms` : ' · pending'}
-                    </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, marginRight: '8px' }}>
+                      <span style={{ color: '#1a1a1a', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {getEntryPrefix(entry)}
+                      </span>
+                      <span style={{ color: '#999', fontSize: '11px' }}>
+                        {new Date(entry.timestamp).toLocaleString()}
+                        {entry.response ? ` · ${entry.response.durationMs}ms` : ' · pending'}
+                        {entry.response?.toolCalls > 0 && ` · ${entry.response.toolCalls} tool calls`}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -368,7 +392,7 @@ export const DebugPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
 const RawDetailOverlay: React.FC<{ entry: DebugEntry; onClose: () => void }> = ({ entry, onClose }) => {
   useLanguage();
   const [activeTab, setActiveTab] = useState<'request' | 'response' | 'context'>('request');
-  const [wrap, setWrap] = useState(false);
+  const [wrap, setWrap] = useState(true);
 
   // 构造完整的 LLM 请求体（与后端实际发给 LLM 的完全一致）
   const fullRequestJson = useMemo(() => {
@@ -473,13 +497,14 @@ const RawDetailOverlay: React.FC<{ entry: DebugEntry; onClose: () => void }> = (
             background: '#fafafa',
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '15px', fontWeight: 600, color: '#1a1a1a' }}>
-              {t('agent.debugRawTitle')}
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <span style={{ fontSize: '15px', fontWeight: 600, color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {t('agent.debugRawTitle')} — {getEntryPrefix(entry)}
             </span>
             <span style={{ fontSize: '11px', color: '#999' }}>
               {new Date(entry.timestamp).toLocaleString()}
               {entry.response ? ` · ${entry.response.durationMs}ms` : ' · pending'}
+              {entry.response?.toolCalls > 0 && ` · ${entry.response.toolCalls} tool calls`}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

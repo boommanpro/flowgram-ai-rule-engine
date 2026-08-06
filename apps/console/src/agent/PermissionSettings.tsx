@@ -8,58 +8,59 @@ import { IconClose } from '@douyinfe/semi-icons';
 import { Radio, RadioGroup } from '@douyinfe/semi-ui';
 
 import { useAgent } from './AgentContext';
+import { useLanguage, t } from '../i18n';
 import type { PermissionPolicy } from './types';
 
 const ACCENT = '#4d53e8';
 
-/** action 分组定义 */
-const ACTION_GROUPS: { title: string; actions: { name: string; desc: string }[] }[] = [
+/** action 分组定义（title/desc 存储 i18n key，渲染时用 t() 翻译） */
+const ACTION_GROUPS: { titleKey: string; actions: { name: string; descKey: string }[] }[] = [
   {
-    title: '导航类',
+    titleKey: 'agent.perm.groupNav',
     actions: [
-      { name: 'goHome', desc: '前往首页' },
-      { name: 'goAdmin', desc: '前往管理后台' },
-      { name: 'goReleases', desc: '前往发布列表' },
-      { name: 'goEditor', desc: '前往工作流编辑器' },
-      { name: 'goTemplateEditor', desc: '前往模板编辑器' },
+      { name: 'goHome', descKey: 'agent.perm.action.goHome' },
+      { name: 'goAdmin', descKey: 'agent.perm.action.goAdmin' },
+      { name: 'goReleases', descKey: 'agent.perm.action.goReleases' },
+      { name: 'goEditor', descKey: 'agent.perm.action.goEditor' },
+      { name: 'goTemplateEditor', descKey: 'agent.perm.action.goTemplateEditor' },
     ],
   },
   {
-    title: '查询类',
+    titleKey: 'agent.perm.groupQuery',
     actions: [
-      { name: 'listWorkflows', desc: '查询工作流列表' },
-      { name: 'listTemplates', desc: '查询模板列表' },
-      { name: 'listLogs', desc: '查询执行日志' },
-      { name: 'getWorkflowDetail', desc: '查询工作流详情' },
-      { name: 'getNodeDetail', desc: '查询节点详情' },
+      { name: 'listWorkflows', descKey: 'agent.perm.action.listWorkflows' },
+      { name: 'listTemplates', descKey: 'agent.perm.action.listTemplates' },
+      { name: 'listLogs', descKey: 'agent.perm.action.listLogs' },
+      { name: 'getWorkflowDetail', descKey: 'agent.perm.action.getWorkflowDetail' },
+      { name: 'getNodeDetail', descKey: 'agent.perm.action.getNodeDetail' },
     ],
   },
   {
-    title: '写操作类',
+    titleKey: 'agent.perm.groupWrite',
     actions: [
-      { name: 'createWorkflow', desc: '创建工作流' },
-      { name: 'createTemplate', desc: '创建模板' },
-      { name: 'saveWorkflow', desc: '保存工作流' },
-      { name: 'deleteWorkflow', desc: '删除工作流' },
+      { name: 'createWorkflow', descKey: 'agent.perm.action.createWorkflow' },
+      { name: 'createTemplate', descKey: 'agent.perm.action.createTemplate' },
+      { name: 'saveWorkflow', descKey: 'agent.perm.action.saveWorkflow' },
+      { name: 'deleteWorkflow', descKey: 'agent.perm.action.deleteWorkflow' },
     ],
   },
   {
-    title: '画布类',
+    titleKey: 'agent.perm.groupCanvas',
     actions: [
-      { name: 'addNode', desc: '新增节点' },
-      { name: 'updateNode', desc: '更新节点' },
-      { name: 'deleteNode', desc: '删除节点' },
-      { name: 'connect', desc: '连接节点' },
-      { name: 'disconnect', desc: '断开连接' },
-      { name: 'autoLayout', desc: '自动布局' },
+      { name: 'addNode', descKey: 'agent.perm.action.addNode' },
+      { name: 'updateNode', descKey: 'agent.perm.action.updateNode' },
+      { name: 'deleteNode', descKey: 'agent.perm.action.deleteNode' },
+      { name: 'connect', descKey: 'agent.perm.action.connect' },
+      { name: 'disconnect', descKey: 'agent.perm.action.disconnect' },
+      { name: 'autoLayout', descKey: 'agent.perm.action.autoLayout' },
     ],
   },
 ];
 
-const POLICY_OPTIONS: { value: PermissionPolicy; label: string; color: string }[] = [
-  { value: 'always', label: '总是允许', color: '#1f9d55' },
-  { value: 'confirm', label: '每次确认', color: '#b7791f' },
-  { value: 'forbid', label: '禁止', color: '#e5404e' },
+const POLICY_OPTIONS: { value: PermissionPolicy; labelKey: string; color: string }[] = [
+  { value: 'always', labelKey: 'agent.perm.policyAlways', color: '#1f9d55' },
+  { value: 'confirm', labelKey: 'agent.perm.policyConfirm', color: '#b7791f' },
+  { value: 'forbid', labelKey: 'agent.perm.policyForbid', color: '#e5404e' },
 ];
 
 /** 所有 action 名称列表 */
@@ -71,6 +72,7 @@ interface PermissionSettingsProps {
 
 export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose }) => {
   const { permissions, updatePermission, updateGlobalPermission } = useAgent();
+  useLanguage();
   const [applyGlobal, setApplyGlobal] = useState(false);
   const [batchLoading, setBatchLoading] = useState(false);
 
@@ -155,10 +157,10 @@ export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose 
             flexShrink: 0,
           }}
         >
-          <span style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a' }}>权限设置</span>
+          <span style={{ fontSize: '14px', fontWeight: 600, color: '#1a1a1a' }}>{t('agent.perm.title')}</span>
           <button
             onClick={handleClose}
-            title="关闭"
+            title={t('agent.perm.close')}
             style={{
               width: '30px',
               height: '30px',
@@ -210,12 +212,12 @@ export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose 
               onChange={(e) => setApplyGlobal(e.target.checked)}
               style={{ cursor: 'pointer', width: '14px', height: '14px' }}
             />
-            <span>应用到所有新会话（将当前权限作为全局默认值持久化）</span>
+            <span>{t('agent.perm.applyGlobal')}</span>
           </label>
 
           {/* 一键批量操作 */}
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '11px', color: '#999', flexShrink: 0 }}>快捷操作：</span>
+            <span style={{ fontSize: '11px', color: '#999', flexShrink: 0 }}>{t('agent.perm.quickAction')}：</span>
             <button
               onClick={() => handleBatchSet('always')}
               disabled={batchLoading}
@@ -230,7 +232,7 @@ export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose 
                 fontWeight: 500,
               }}
             >
-              全部允许
+              {t('agent.perm.allAllow')}
             </button>
             <button
               onClick={() => handleBatchSet('confirm')}
@@ -246,7 +248,7 @@ export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose 
                 fontWeight: 500,
               }}
             >
-              全部确认
+              {t('agent.perm.allConfirm')}
             </button>
             <button
               onClick={() => handleBatchSet('forbid')}
@@ -262,20 +264,20 @@ export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose 
                 fontWeight: 500,
               }}
             >
-              全部禁止
+              {t('agent.perm.allForbid')}
             </button>
           </div>
 
           {/* 统计 */}
           <div style={{ marginTop: '8px', fontSize: '11px', color: '#aaa' }}>
-            当前：{stats.always} 允许 / {stats.confirm} 确认 / {stats.forbid} 禁止
+            {t('agent.perm.statsCurrent')}：{stats.always} {t('agent.perm.allow')} / {stats.confirm} {t('agent.perm.confirmWord')} / {stats.forbid} {t('agent.perm.forbidWord')}
           </div>
         </div>
 
         {/* 内容区 */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
           {ACTION_GROUPS.map((group) => (
-            <div key={group.title} style={{ marginBottom: '18px' }}>
+            <div key={group.titleKey} style={{ marginBottom: '18px' }}>
               <div
                 style={{
                   fontSize: '12px',
@@ -285,7 +287,7 @@ export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose 
                   letterSpacing: '0.3px',
                 }}
               >
-                {group.title}
+                {t(group.titleKey)}
               </div>
               <div
                 style={{
@@ -319,7 +321,7 @@ export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose 
                         >
                           {action.name}
                         </span>
-                        <span style={{ fontSize: '11px', color: '#aaa' }}>{action.desc}</span>
+                        <span style={{ fontSize: '11px', color: '#aaa' }}>{t(action.descKey)}</span>
                       </div>
                       <RadioGroup
                         type="button"
@@ -329,7 +331,7 @@ export const PermissionSettings: React.FC<PermissionSettingsProps> = ({ onClose 
                       >
                         {POLICY_OPTIONS.map((opt) => (
                           <Radio key={opt.value} value={opt.value}>
-                            {opt.label}
+                            {t(opt.labelKey)}
                           </Radio>
                         ))}
                       </RadioGroup>

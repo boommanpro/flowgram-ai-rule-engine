@@ -253,7 +253,7 @@ export const WorkflowListSelector: React.FC<WorkflowListSelectorProps> = ({
           >
             <Space vertical style={{ width: '100%' }}>
               <Title heading={5} style={{ margin: 0 }}>
-                <IconInfoCircle /> 已选择: {selectedWorkflow.name}
+                <IconInfoCircle /> {t('workflow.selected')}: {selectedWorkflow.name}
               </Title>
               <Text type="secondary" style={{ margin: '4px 0 8px 0', fontSize: 12 }}>
                 {selectedWorkflow.description}

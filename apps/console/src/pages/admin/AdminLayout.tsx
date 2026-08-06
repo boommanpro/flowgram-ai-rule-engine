@@ -50,19 +50,17 @@ const IconBackHome = () => (
 const PAGE_TITLE_KEYS: Record<string, string> = {
   '/admin/workflows': 'admin.workflows',
   '/admin/templates': 'admin.templates',
-  '/admin/agent-config': 'Agent 配置中心',
+  '/admin/agent-config': 'agent.config.title',
 };
 
 const getPageTitle = (pathname: string): string => {
   const key = PAGE_TITLE_KEYS[pathname];
   if (key) {
-    // i18n keys use the t() helper; the agent-config entry is a literal string.
-    if (key.startsWith('admin.')) return t(key);
-    return key;
+    return t(key);
   }
   if (pathname.startsWith('/admin/workflows')) return t('admin.workflows');
   if (pathname.startsWith('/admin/templates')) return t('admin.templates');
-  if (pathname.startsWith('/admin/agent-config')) return 'Agent 配置中心';
+  if (pathname.startsWith('/admin/agent-config')) return t('agent.config.title');
   return t('admin.title.default');
 };
 
@@ -143,7 +141,7 @@ export const AdminLayout = () => {
           </NavLink>
           <NavLink to="/admin/agent-config" style={navLinkStyle}>
             <IconConfig />
-            <span>Agent 配置</span>
+            <span>{t('agent.config.title')}</span>
           </NavLink>
         </nav>
 

@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { workflowApi, type GaiaWorkflow } from '../../services/workflow-api';
+import { workflowApi, type GaiaWorkflow, type GaiaWorkflowTemplate } from '../../services/workflow-api';
 import type { CSSProperties } from 'react';
 import { useLanguage, t } from '../../i18n';
 
@@ -14,12 +14,14 @@ interface WorkflowForm {
   workflowName: string;
   workflowCode: string;
   workflowDesc: string;
+  templateCode: string;
 }
 
 const EMPTY_FORM: WorkflowForm = {
   workflowName: '',
   workflowCode: '',
   workflowDesc: '',
+  templateCode: '',
 };
 
 /* ---------------- Helpers ---------------- */
@@ -44,6 +46,7 @@ export const WorkflowManagement = () => {
   const [workflowForm, setWorkflowForm] = useState<WorkflowForm>(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [templates, setTemplates] = useState<GaiaWorkflowTemplate[]>([]);
 
   const loadData = async () => {
     setLoading(true);
@@ -70,10 +73,19 @@ export const WorkflowManagement = () => {
     );
   });
 
-  const openCreateModal = () => {
+  const openCreateModal = async () => {
     setEditingWorkflow(null);
     setWorkflowForm(EMPTY_FORM);
     setShowCreateModal(true);
+    // 加载模板列表供下拉选择
+    if (templates.length === 0) {
+      try {
+        const list = await workflowApi.listTemplates();
+        setTemplates(list || []);
+      } catch (err) {
+        console.error('Failed to load templates:', err);
+      }
+    }
   };
 
   const openEditModal = (wf: GaiaWorkflow) => {
@@ -82,6 +94,7 @@ export const WorkflowManagement = () => {
       workflowName: wf.workflowName || '',
       workflowCode: wf.workflowCode || '',
       workflowDesc: wf.workflowDesc || '',
+      templateCode: '',
     });
     setShowCreateModal(true);
   };
@@ -111,6 +124,7 @@ export const WorkflowManagement = () => {
           workflowName: workflowForm.workflowName.trim(),
           workflowCode: workflowForm.workflowCode.trim(),
           workflowDesc: workflowForm.workflowDesc.trim(),
+          templateCode: workflowForm.templateCode || undefined,
         });
       }
       closeModal();
@@ -259,6 +273,24 @@ export const WorkflowManagement = () => {
                 rows={3}
               />
             </div>
+
+            {!editingWorkflow && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={fieldLabelStyle}>{t('admin.modal.template')}</label>
+                <select
+                  value={workflowForm.templateCode}
+                  onChange={(e) => setWorkflowForm({ ...workflowForm, templateCode: e.target.value })}
+                  style={inputStyle}
+                >
+                  <option value="">{t('admin.modal.placeholder.template')}</option>
+                  {templates.map((tpl) => (
+                    <option key={tpl.templateCode} value={tpl.templateCode}>
+                      {tpl.templateName} ({tpl.templateCode})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
               <button onClick={closeModal} style={cancelBtnStyle}>{t('Cancel')}</button>

@@ -65,7 +65,7 @@ const ConfirmModal: React.FC<{ event: ToolCallEvent; onResolve: (v: boolean) => 
           确认执行工具
         </div>
         <div style={{ marginBottom: '6px' }}>
-          <span style={{ color: '#999', fontSize: '12px' }}>操作</span>
+          <span style={{ color: '#999', fontSize: '12px' }}>{t('agent.actions')}</span>
           <span
             style={{
               marginLeft: '8px',
@@ -191,10 +191,22 @@ export const AgentDockPanel: React.FC = () => {
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // IME 输入法合成状态：中文输入候选词期间按回车不应发送消息
+  const isComposingRef = useRef(false);
+
   // 注册工具执行器
   useEffect(() => {
     setToolExecutor(createToolExecutor(navigate));
   }, [navigate, setToolExecutor]);
+
+  // 首次打开 Dock 且无会话时，自动新建对话（无需用户手动点击）
+  const autoCreateInitRef = useRef(false);
+  useEffect(() => {
+    if (dockOpen && !autoCreateInitRef.current && sessions.length === 0 && !currentSessionKey) {
+      autoCreateInitRef.current = true;
+      void createSession();
+    }
+  }, [dockOpen, sessions.length, currentSessionKey, createSession]);
 
   /** 读取单个 File 为 base64 data URL */
   const readFileAsDataURL = useCallback((file: File): Promise<string> => {
@@ -261,7 +273,8 @@ export const AgentDockPanel: React.FC = () => {
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      // 中文输入法合成期间（候选词未确认）按回车不应发送消息
+      if (e.key === 'Enter' && !e.shiftKey && !isComposingRef.current && !e.nativeEvent.isComposing) {
         e.preventDefault();
         handleSend();
       }
@@ -544,6 +557,8 @@ export const AgentDockPanel: React.FC = () => {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
+                onCompositionStart={() => { isComposingRef.current = true; }}
+                onCompositionEnd={() => { isComposingRef.current = false; }}
                 onPaste={handlePaste}
                 placeholder={
                   streaming

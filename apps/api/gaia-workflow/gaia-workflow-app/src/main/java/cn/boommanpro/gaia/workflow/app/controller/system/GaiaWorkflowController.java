@@ -119,11 +119,19 @@ public class GaiaWorkflowController {
     }
 
     /**
-     * 新工作流的默认最小数据：仅包含一个 Start 节点
+     * 新工作流的默认最小数据：包含 Start 与 End 节点
+     * Start 节点定义 query 入参（string），End 节点直接引用并返回 start_0.query
      */
     private static final String DEFAULT_WORKFLOW_DATA =
-        "{\"nodes\":[{\"id\":\"start_0\",\"type\":\"start\",\"meta\":{\"position\":{\"x\":200,\"y\":200}}," +
-        "\"data\":{\"title\":\"Start\",\"outputs\":{\"type\":\"object\",\"properties\":{}}}}],\"edges\":[]}";
+        "{\"nodes\":[" +
+        "{\"id\":\"start_0\",\"type\":\"start\",\"meta\":{\"position\":{\"x\":180,\"y\":200}}," +
+        "\"data\":{\"title\":\"Start\",\"description\":\"start node\"," +
+        "\"outputs\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\",\"default\":\"Hello Flow.\"}}}}}," +
+        "{\"id\":\"end_0\",\"type\":\"end\",\"meta\":{\"position\":{\"x\":180,\"y\":420}}," +
+        "\"data\":{\"title\":\"End\",\"description\":\"end node\"," +
+        "\"inputsValues\":{\"query\":{\"type\":\"ref\",\"content\":[\"start_0\",\"query\"]}}," +
+        "\"inputs\":{\"properties\":{\"query\":{\"type\":\"string\"}}}}}" +
+        "],\"edges\":[{\"sourceNodeID\":\"start_0\",\"targetNodeID\":\"end_0\"}]}";
 
     /**
      * 更新工作流

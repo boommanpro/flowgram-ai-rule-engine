@@ -212,7 +212,7 @@ export const WorkflowViewer = ({
       }}>
         <EditorRenderer className="demo-editor" />
         {/* 可新增节点等工具，但隐藏 Save 与 Test Run（不可运行） */}
-        <DemoTools hideSaveAndTestRun hideSave />
+        <DemoTools hideSaveAndTestRun hideSave hideRunHistory hideReportEditor />
       </div>
     </FreeLayoutEditorProvider>
   );
@@ -545,7 +545,7 @@ export const TemplateEditor = () => {
           <div className="demo-container" style={{ width: '100%', height: '100%' }}>
             <EditorRenderer className="demo-editor" />
           </div>
-          <DemoTools hideSaveAndTestRun hideSave />
+          <DemoTools hideSave />
         </div>
       </div>
     </FreeLayoutEditorProvider>
