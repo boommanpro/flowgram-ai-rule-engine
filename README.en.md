@@ -6,10 +6,10 @@
 
 **Build AI workflows, visually. Powered by [flowgram.ai](https://github.com/bytedance/flowgram.ai).**
 
-[![GitHub stars](https://img.shields.io/github/stars/boommanpro/gaia-workflow-engine?style=social)](https://github.com/boommanpro/gaia-workflow-engine)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub release](https://img.shields.io/github/v/release/boommanpro/gaia-workflow-engine)](https://github.com/boommanpro/gaia-workflow-engine/releases)
-[![Live Demo](https://img.shields.io/badge/demo-GitHub%20Pages-blue.svg)](https://boommanpro.github.io/gaia-workflow-engine/)
+[![GitHub Stars](https://img.shields.io/github/stars/boommanpro/gaia-workflow-engine?style=for-the-badge&logo=github&label=Stars&color=orange)](https://github.com/boommanpro/gaia-workflow-engine/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![GitHub Release](https://img.shields.io/github/v/release/boommanpro/gaia-workflow-engine?style=for-the-badge)](https://github.com/boommanpro/gaia-workflow-engine/releases)
+[![Live Demo](https://img.shields.io/badge/demo-GitHub%20Pages-blue.svg?style=for-the-badge)](https://boommanpro.github.io/gaia-workflow-engine/)
 
 **[English](./README.en.md)** · **[简体中文](./README.md)**
 
@@ -21,6 +21,9 @@ A modern visual rule engine platform for orchestrating complex AI workflows. Des
 
 ## Features
 
+- **AI Agent Sidebar** — Conversational workflow generation: CreatePlan step-by-step planning, Canvas auto-create nodes & edges, HTTP/Query workflow lookup, live token & plan progress; sessions are renameable and reviewable.
+- **Agent Config Center** — Model settings (Host/Key/Temperature/Max Tokens), Embedding vector search (Jina RAG knowledge chunks), system prompt & tool catalog (navigate/query/manage/canvas/createPlan/executeStep), and tool permission policies (allow/confirm/deny).
+- **Debug Info Panel** — One DebugEntry per LLM call: raw request (with messages), raw response (with toolCalls), context details, SSE event replay, Raw JSON viewer; click a message bubble to jump and highlight the corresponding entry.
 - **Visual Canvas** — Infinite, zoomable canvas with drag-and-drop nodes. Supports loops, branches, and conditional logic.
 - **AI Node Types** — Built-in LLM calls, code execution, HTTP requests, string formatting, and variable management.
 - **Real-time Preview** — Test individual nodes or entire workflows with live input/output inspection.
@@ -31,6 +34,8 @@ A modern visual rule engine platform for orchestrating complex AI workflows. Des
 
 ## Screenshots
 
+### Workbench & Workflows
+
 | Page | Preview |
 |------|---------|
 | **Home** — Internationalized product landing page | ![Home](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/screenshot-home.png) |
@@ -40,6 +45,17 @@ A modern visual rule engine platform for orchestrating complex AI workflows. Des
 | **Admin · Workflows** — Workflow management console | ![Admin Workflows](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/screenshot-admin-workflows.png) |
 | **Admin · Templates** — Template management console | ![Admin Templates](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/screenshot-admin-templates.png) |
 | **Release Log** — Version history timeline | ![Releases](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/screenshot-releases.png) |
+
+### AI Agent
+
+| Page | Preview |
+|------|---------|
+| **AI Agent Chat** — Sidebar conversational workflow generation with CreatePlan + step cards | ![AI Agent Chat](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/agent/Snipaste_2026-08-07_19-20-20.jpg) |
+| **Debug Panel** — Raw request/response, SSE event stream, context, Raw JSON; click messages to jump | ![Debug Panel](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/agent/Snipaste_2026-08-07_19-20-42.jpg) |
+| **Agent Config · Models** — API Host/Key, model params, BGE Embedding vector search | ![Agent Config · Models](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/agent/Snipaste_2026-08-07_19-21-14.jpg) |
+| **Agent Config · Prompts** — Default system prompt + tool definitions (navigate/query/manage/canvas) | ![Agent Config · Prompts](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/agent/Snipaste_2026-08-07_19-21-29.jpg) |
+| **Agent Config · Permissions** — Global tool permission policy (allow/confirm/deny) | ![Agent Config · Permissions](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/agent/Snipaste_2026-08-07_19-21-44.jpg) |
+| **Agent Running Workflow** — Auto-creates nodes & edges on canvas, tests and executes step-by-step | ![Agent Running Workflow](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/agent/Snipaste_2026-08-07_19-23-25.jpg) |
 
 ## Quick Start
 

@@ -6,10 +6,10 @@
 
 **可视化构建 AI 工作流，基于 [flowgram.ai](https://github.com/bytedance/flowgram.ai) 驱动。**
 
-[![GitHub stars](https://img.shields.io/github/stars/boommanpro/gaia-workflow-engine?style=social)](https://github.com/boommanpro/gaia-workflow-engine)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub release](https://img.shields.io/github/v/release/boommanpro/gaia-workflow-engine)](https://github.com/boommanpro/gaia-workflow-engine/releases)
-[![Live Demo](https://img.shields.io/badge/demo-GitHub%20Pages-blue.svg)](https://boommanpro.github.io/gaia-workflow-engine/)
+[![GitHub Stars](https://img.shields.io/github/stars/boommanpro/gaia-workflow-engine?style=for-the-badge&logo=github&label=Stars&color=orange)](https://github.com/boommanpro/gaia-workflow-engine/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![GitHub Release](https://img.shields.io/github/v/release/boommanpro/gaia-workflow-engine?style=for-the-badge)](https://github.com/boommanpro/gaia-workflow-engine/releases)
+[![Live Demo](https://img.shields.io/badge/demo-GitHub%20Pages-blue.svg?style=for-the-badge)](https://boommanpro.github.io/gaia-workflow-engine/)
 
 **[English](./README.en.md)** · **[简体中文](./README.md)**
 
@@ -21,6 +21,9 @@
 
 ## 功能特性
 
+- **AI Agent 侧栏对话** — 对话式生成工作流：CreatePlan 分步规划、Canvas 自动创建节点/连线、HTTP/Query 查询工作流、实时预览 token 与计划进度；会话可重命名、可审查。
+- **Agent 配置中心** — 模型参数（Host/Key/Temperature/Max Tokens）、Embedding 向量检索（Jina RAG 知识块）、系统提示词与工具集（navigate/query/manage/canvas/createPlan/executeStep）、工具权限策略（允许/确认/禁止）。
+- **调试信息面板** — 每条 LLM 调用独立 DebugEntry：原始请求（含 messages）、原始响应（含 toolCalls）、上下文详情、SSE Event 回放、Raw JSON；点击消息气泡跳转定位到对应条目。
 - **可视化画布** — 无限缩放画布，支持拖拽节点。通过循环、分支和条件逻辑设计复杂的工作流。
 - **AI 节点类型** — 内置 LLM 调用、代码执行、HTTP 请求、字符串格式化和变量管理节点。
 - **实时预览** — 测试单个节点或整个工作流，实时查看输入输出和执行历史。
@@ -31,6 +34,8 @@
 
 ## 截图
 
+### 工作台与工作流
+
 | 页面 | 预览 |
 |------|------|
 | **首页** — 国际化产品介绍页 | ![首页](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/screenshot-home.png) |
@@ -40,6 +45,17 @@
 | **管理后台 · 工作流** — 工作流管理控制台 | ![管理工作流](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/screenshot-admin-workflows.png) |
 | **管理后台 · 模板** — 模板管理控制台 | ![管理模板](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/screenshot-admin-templates.png) |
 | **发布日志** — 版本历史时间线 | ![发布日志](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/images/screenshot-releases.png) |
+
+### AI Agent
+
+| 页面 | 预览 |
+|------|------|
+| **AI Agent 对话** — 侧边栏对话式生成工作流，CreatePlan 分步规划 + 步骤执行卡片 | ![AI Agent 对话](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/agent/Snipaste_2026-08-07_19-20-20.jpg) |
+| **调试信息面板** — 原始请求/响应、SSE Event、Context 详情、Raw JSON，点击消息跳转定位 | ![调试信息面板](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/agent/Snipaste_2026-08-07_19-20-42.jpg) |
+| **Agent 配置中心 · 模型** — API Host/Key、模型参数、Embedding 向量检索（BGE） | ![Agent 模型配置](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/agent/Snipaste_2026-08-07_19-21-14.jpg) |
+| **Agent 配置中心 · 提示词** — 默认系统提示词 + 工具集定义（navigate/query/manage/canvas） | ![Agent 提示词配置](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/agent/Snipaste_2026-08-07_19-21-29.jpg) |
+| **Agent 配置中心 · 工具权限** — 所有工具的全局权限策略（允许/确认/禁止） | ![Agent 工具权限](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/agent/Snipaste_2026-08-07_19-21-44.jpg) |
+| **Agent 执行工作流** — 在画布上自动创建节点与连线，逐步测试并执行 | ![Agent 执行工作流](https://raw.githubusercontent.com/boommanpro/gaia-workflow-engine/main/docs/agent/Snipaste_2026-08-07_19-23-25.jpg) |
 
 ## 快速开始
 
