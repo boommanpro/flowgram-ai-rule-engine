@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#4d53e8"/>
+    </linearGradient>
+  </defs>
+  <!-- 字母 G 由节点和线段构成（放大版，填充更多画布，透明背景） -->
+  <path d="M188 86 Q128 55, 86 97 Q55 138, 86 180 Q128 222, 188 190 L188 149 L133 149"
+        fill="none" stroke="url(#g3)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="188" cy="86" r="13" fill="#4d53e8"/>
+  <circle cx="86" cy="97" r="11" fill="#6366f1"/>
+  <circle cx="55" cy="138" r="11" fill="#6366f1"/>
+  <circle cx="86" cy="180" r="11" fill="#6366f1"/>
+  <circle cx="188" cy="190" r="13" fill="#4d53e8"/>
+  <circle cx="188" cy="149" r="11" fill="#4d53e8"/>
+  <circle cx="133" cy="149" r="13" fill="#4d53e8"/>
+</svg>
