@@ -9,6 +9,11 @@ export interface AgentSession {
   title: string;
   createdAt?: string;
   updatedAt?: string;
+  // 人工审查标记
+  reviewRating?: string | null;   // good / bad / null
+  reviewIssue?: string | null;
+  reviewStatus?: string;          // pending / analyzing / fixed / ignored
+  reviewFixNote?: string | null;
 }
 
 /** 权限策略 */

@@ -43,8 +43,38 @@ export const agentApi = {
       method: 'PUT',
       body: JSON.stringify({ debugData }),
     }),
-  getDebugData: (sessionKey: string) =>
-    request<string>(`/agent/session/${sessionKey}/debug`),
+  getDebugData: async (sessionKey: string): Promise<string> => {
+    // debug 接口可能返回空 body（debugData 为 null），不能用通用 request 的 response.json()
+    const url = `${getApiBaseUrl()}/agent/session/${sessionKey}/debug`;
+    const response = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+    }
+    const text = await response.text();
+    if (!text) return '';
+    try {
+      const parsed = JSON.parse(text);
+      return typeof parsed === 'string' ? parsed : text;
+    } catch {
+      return text;
+    }
+  },
+
+  // 会话审查（人工标记）
+  updateReview: (sessionKey: string, review: {
+    reviewRating?: string | null;
+    reviewIssue?: string | null;
+    reviewStatus?: string;
+    reviewFixNote?: string | null;
+  }) =>
+    request<boolean>(`/agent/session/${sessionKey}/review`, {
+      method: 'PUT',
+      body: JSON.stringify(review),
+    }),
+  exportSessionUrl: (sessionKey: string) =>
+    `${getApiBaseUrl()}/agent/session/${sessionKey}/export?pretty=true`,
 
   // 权限管理
   getPermissions: (sessionKey: string) =>

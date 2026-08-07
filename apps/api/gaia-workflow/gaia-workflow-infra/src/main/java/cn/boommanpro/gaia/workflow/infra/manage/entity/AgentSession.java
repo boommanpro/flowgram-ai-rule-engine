@@ -44,4 +44,22 @@ public class AgentSession {
      */
     @TableField("debug_data")
     private String debugData;
+
+    // ===== 人工审查标记（用于会话质量分析和 event loop） =====
+
+    /** 质量评分：good / bad / null（未标记） */
+    @TableField("review_rating")
+    private String reviewRating;
+
+    /** 问题描述（人工填写，哪里不好） */
+    @TableField("review_issue")
+    private String reviewIssue;
+
+    /** 状态标签：pending（默认）/ analyzing / fixed / ignored */
+    @TableField("review_status")
+    private String reviewStatus;
+
+    /** 修复建议（给 coding agent 的指令） */
+    @TableField("review_fix_note")
+    private String reviewFixNote;
 }

@@ -198,6 +198,9 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
   const [tokenUsage, setTokenUsage] = useState<{ estimated: number; limit: number }>({ estimated: 0, limit: 32768 });
   // 系统提示词 token 估算（从 context_loaded 事件获取）
   const systemPromptTokensRef = useRef<number>(0);
+  // 缓存 context_loaded 数据：后端发送顺序为 context_loaded → debug_request，
+  // 但 entry 由 debug_request 创建，若 context_loaded 先到则缓存待 debug_request 创建 entry 时回填
+  const pendingContextRef = useRef<any | null>(null);
 
   // Debug entries (Task 3)
   const [debugEntries, setDebugEntries] = useState<Array<{
@@ -329,23 +332,56 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => {});
   }, [currentSessionKey]);
 
-  // debugEntries 加载后，为历史 assistant 消息按时序重建 debugEntryId 关联（刷新恢复跳转）
+  // debugEntries 加载后，为历史 assistant 消息按时间戳就近匹配重建 debugEntryId 关联（刷新恢复跳转）
+  // 依赖 messages：会话切换时 messages 异步加载完成后才触发匹配，避免 prev 为空导致漏匹配
   useEffect(() => {
     if (debugEntries.length === 0) return;
     setMessages((prev) => {
-      let entryIdx = 0;
       let changed = false;
+      // 收集所有有内容、未关联 debugEntryId 的 assistant 消息
+      const needMatch = prev.filter(
+        (m) => m.role === 'assistant' && m.content && !m.debugEntryId
+      );
+      if (needMatch.length === 0) return prev;
+      // 收集所有未被占用的 debug entries（按时间排序）
+      const occupiedIds = new Set(
+        prev.filter((m) => m.debugEntryId).map((m) => m.debugEntryId!)
+      );
+      const available = debugEntries
+        .filter((e) => !occupiedIds.has(e.id))
+        .sort((a, b) => a.timestamp - b.timestamp);
+      if (available.length === 0) return prev;
+      // 时间戳就近匹配：为每个待匹配消息找时间戳最接近的 entry
+      const usedEntryIds = new Set<string>();
+      const matchMap = new Map<string, string>();
+      for (const msg of needMatch) {
+        let bestEntry: typeof available[0] | undefined;
+        let bestDiff = Infinity;
+        for (const entry of available) {
+          if (usedEntryIds.has(entry.id)) continue;
+          const diff = Math.abs(msg.timestamp - entry.timestamp);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestEntry = entry;
+          }
+        }
+        if (bestEntry) {
+          usedEntryIds.add(bestEntry.id);
+          matchMap.set(msg.id, bestEntry.id);
+        }
+      }
+      if (matchMap.size === 0) return prev;
       const updated = prev.map((m) => {
-        // 只为有内容且未关联 debugEntryId 的 assistant 消息重建关联
-        if (m.role === 'assistant' && m.content && !m.debugEntryId && entryIdx < debugEntries.length) {
+        const eid = matchMap.get(m.id);
+        if (eid) {
           changed = true;
-          return { ...m, debugEntryId: debugEntries[entryIdx++].id };
+          return { ...m, debugEntryId: eid };
         }
         return m;
       });
       return changed ? updated : prev;
     });
-  }, [debugEntries]);
+  }, [debugEntries, messages]);
 
   // 调试信息变更时持久化到 localStorage + 后端 DB（debounced）
   const debugEntriesRef = useRef<typeof debugEntries>([]);
@@ -971,7 +1007,10 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
         // Task 3: debug handlers — 带会话守卫，防止跨会话串数据
         onDebugRequest: (data: any) => {
           const entryId = nanoid();
-          const entry = { id: entryId, timestamp: Date.now(), request: data };
+          // 优先消费 context_loaded 缓存（后端 context_loaded 先于 debug_request 发送）
+          const ctx = pendingContextRef.current;
+          pendingContextRef.current = null;
+          const entry = { id: entryId, timestamp: Date.now(), request: data, context: ctx || undefined };
           if (sessionKey === currentSessionKeyRef.current) {
             // 仍在原会话，更新视图
             setDebugEntries((prev) => [...prev, entry]);
@@ -1021,16 +1060,25 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
             });
           }
           if (sessionKey === currentSessionKeyRef.current) {
-            setDebugEntries((prev) => {
-              const updated = [...prev];
-              for (let i = updated.length - 1; i >= 0; i--) {
-                if (!updated[i].context) {
-                  updated[i] = { ...updated[i], context: data };
-                  break;
+            // 后端发送顺序：context_loaded → debug_request
+            // 正常情况下 context_loaded 先到达，此时还没有 entry，缓存到 ref 等 debug_request 创建 entry 时消费
+            // 兼容旧顺序：若已有无 context 的 entry（debug_request 已先到），直接回填最后一个
+            const hasEntryWithoutCtx = debugEntriesRef.current.some((e) => !e.context);
+            if (hasEntryWithoutCtx) {
+              setDebugEntries((prev) => {
+                const updated = [...prev];
+                for (let i = updated.length - 1; i >= 0; i--) {
+                  if (!updated[i].context) {
+                    updated[i] = { ...updated[i], context: data };
+                    break;
+                  }
                 }
-              }
-              return updated;
-            });
+                return updated;
+              });
+            } else {
+              // 缓存，等 onDebugRequest 创建 entry 时消费
+              pendingContextRef.current = data;
+            }
           } else {
             updateDebugEntryInSession(sessionKey, (e) => !e.context, (e) => ({ ...e, context: data }));
           }

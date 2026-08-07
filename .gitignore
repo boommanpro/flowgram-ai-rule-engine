@@ -158,6 +158,11 @@ upload/
 docs/_book/
 .sass-cache/
 
+# IDE/工具缓存
+.xcodemap/
+# 后端临时解压目录
+extracted/
+
 # 其他
 .DS_Store
 .DS_Store?

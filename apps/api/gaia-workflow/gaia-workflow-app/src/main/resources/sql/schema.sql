@@ -56,7 +56,12 @@ CREATE TABLE IF NOT EXISTS agent_session (
     created_at TEXT,
     updated_at TEXT,
     is_deleted TINYINT DEFAULT 0,
-    debug_data TEXT
+    debug_data TEXT,
+    -- 人工审查标记（用于会话质量分析和 event loop）
+    review_rating VARCHAR(16),      -- good / bad / null
+    review_issue TEXT,              -- 问题描述（哪里不好）
+    review_status VARCHAR(32) DEFAULT 'pending', -- pending / analyzing / fixed / ignored
+    review_fix_note TEXT            -- 修复建议（给 coding agent 的指令）
 );
 
 -- Agent 对话消息表（持久化历史对话）

@@ -6,6 +6,7 @@ import { AdminLayout } from './pages/admin/AdminLayout';
 import { WorkflowManagement } from './pages/admin/WorkflowManagement';
 import { TemplateManagement } from './pages/admin/TemplateManagement';
 import { AgentConfigManagement } from './pages/admin/AgentConfigManagement';
+import { SessionReview } from './pages/admin/SessionReview';
 import { AgentProvider, AgentDock } from './agent';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
               <Route path="workflows" element={<WorkflowManagement />} />
               <Route path="templates" element={<TemplateManagement />} />
               <Route path="agent-config" element={<AgentConfigManagement />} />
+              <Route path="sessions" element={<SessionReview />} />
             </Route>
             <Route path="/editor" element={<Editor />} />
             <Route path="/editor/:workflowCode" element={<Editor />} />
