@@ -388,4 +388,1359 @@
     <h2>产品概览与核心能力</h2>
     <p class="section-desc">
       Gaia AI Agent 定位为「工作流引擎的 AI Copilot」。用户通过对话即可完成
-      从 0 到 1 的工作流搭建
+      从 0 到 1 的工作流搭建，AI 自动规划步骤、创建节点、测试运行、迭代调优，
+      全过程可观察、可回溯、可编辑。
+    </p>
+
+    <!-- 8 大核心能力 -->
+    <h3>🧩 八大核心能力模块</h3>
+    <div class="grid-4" style="margin-bottom: 56px;">
+      <div class="card">
+        <div class="card-icon">💬</div>
+        <h4>AI 智能对话</h4>
+        <p>自然语言驱动的交互方式，支持多轮上下文与 SSE 流式输出。</p>
+        <ul>
+          <li>SSE 流式 token 响应</li>
+          <li>::options 选项化交互</li>
+          <li>自动生成会话标题</li>
+          <li>Markdown 渲染输出</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎨</div>
+        <h4>画布节点编排</h4>
+        <p>在工作流画布上增删改节点、连线、自动布局、运行测试。</p>
+        <ul>
+          <li>12 种节点类型全覆盖</li>
+          <li>占位符 $0/$1 引用</li>
+          <li>自动布局优化</li>
+          <li>单节点 / 全工作流测试</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon">📋</div>
+        <h4>createPlan 分步执行</h4>
+        <p>复杂任务先制定计划，再逐步执行，每步可重试可调整。</p>
+        <ul>
+          <li>LLM 节点创建后必测</li>
+          <li>失败回滚 updateNode</li>
+          <li>PlanCard 可视化</li>
+          <li>历史刷新不丢失</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon">📚</div>
+        <h4>RAG 知识增强</h4>
+        <p>向量 + 关键词双层检索，节点知识库完整注入，图谱补充。</p>
+        <ul>
+          <li>Embedding 余弦相似度</li>
+          <li>关键词 LIKE 降级兜底</li>
+          <li>节点知识库 (40条) 全量注入</li>
+          <li>知识图谱子图检索</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔧</div>
+        <h4>复合工具系统</h4>
+        <p>6 大复合工具，20+ 子动作，DB-first 热更新定义。</p>
+        <ul>
+          <li>navigate / query / manage</li>
+          <li>canvas / createPlan / executeStep</li>
+          <li>三级权限 (会话→全局→默认)</li>
+          <li>工具 schema 内联节点提示</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon">🗂️</div>
+        <h4>会话与历史管理</h4>
+        <p>多会话独立管理，调试信息与会话绑定，DB 持久化。</p>
+        <ul>
+          <li>首次打开自动建会话</li>
+          <li>标题双击编辑 / 自动生成</li>
+          <li>会话详情回溯导出 cURL</li>
+          <li>调试信息 localStorage + DB 双层</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔬</div>
+        <h4>调试观测面板</h4>
+        <p>完整记录 LLM 输入输出，上下文加载细节，点击跳转。</p>
+        <ul>
+          <li>context_loaded 全字段</li>
+          <li>debug_request 完整 messages+tools</li>
+          <li>Raw 面板自动换行</li>
+          <li>消息可点击跳转条目</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚙️</div>
+        <h4>配置管理中心</h4>
+        <p>模型/提示词/知识库/工具/权限/图谱 6 大 Tab 在线编辑。</p>
+        <ul>
+          <li>LLM 配置即时生效</li>
+          <li>Embedding 独立 + 降级</li>
+          <li>AI 辅助生成内容</li>
+          <li>工具定义 DB 热刷新</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ================= 业务流程 ================= -->
+    <h3 style="margin-top: 40px;">🔁 业务主流程：用户对话 → 工作流落地</h3>
+    <p class="section-desc" style="margin-bottom: 16px;">
+      从用户发出一句自然语言，到最终一个可运行工作流呈现在画布上的完整业务链路。
+    </p>
+
+    <div class="flow-diagram">
+      <svg viewBox="0 0 1000 600" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#9ca3af" />
+          </marker>
+          <marker id="arrowP" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#4d53e8" />
+          </marker>
+        </defs>
+
+        <!-- ============================================================ -->
+        <!--  阶段 1 泳道: 用户输入与上下文                                -->
+        <!-- ============================================================ -->
+        <rect x="15" y="25" width="970" height="95" rx="12" ry="12"
+              fill="#fafbff" stroke="#4d53e8" stroke-width="1.4" opacity="0.55" />
+        <rect x="28" y="14" width="230" height="20" rx="5" ry="5" fill="#4d53e8" />
+        <text x="46" y="28" style="font-size:11.5px;fill:#fff;font-weight:600;letter-spacing:0.4px;">
+          阶段 ① · 用户输入与上下文装配
+        </text>
+
+        <g>
+          <rect class="flow-node" x="35" y="48" width="175" height="60" />
+          <text class="flow-text" x="122" y="70">① 自然语言输入</text>
+          <text class="flow-text small" x="122" y="90">"创建情感分析工作流"</text>
+
+          <line x1="210" y1="78" x2="240" y2="78" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow)" />
+
+          <rect class="flow-node accent" x="240" y="48" width="175" height="60" />
+          <text class="flow-text" x="327" y="70">② 对话入库</text>
+          <text class="flow-text small" x="327" y="90">自动生成标题 · 保存 user</text>
+
+          <line x1="415" y1="78" x2="445" y2="78" stroke="#4d53e8" stroke-width="1.4" marker-end="url(#arrowP)" />
+
+          <rect class="flow-node" x="445" y="48" width="215" height="60" />
+          <text class="flow-text" x="552" y="68">③ 上下文装配 (6 层)</text>
+          <text class="flow-text small" x="552" y="90">系统提示词→RAG→节点KB→图谱→模板→工具</text>
+
+          <line x1="660" y1="78" x2="690" y2="78" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow)" />
+
+          <rect class="flow-node accent" x="690" y="48" width="280" height="60" />
+          <text class="flow-text" x="830" y="68">④ Token 估算 / 压缩判定</text>
+          <text class="flow-text small" x="830" y="90">≥90% 强制压缩 · ≥80% 预警</text>
+        </g>
+
+        <!-- 阶段 1 → 阶段 2 垂直转折箭头 -->
+        <g stroke="#4d53e8" stroke-width="1.6" fill="none" marker-end="url(#arrowP)">
+          <!-- 从阶段①右下角 → 向下 → 到阶段②右上角 -->
+          <path d="M 950 108 L 950 138 L 925 138" />
+        </g>
+
+        <!-- ============================================================ -->
+        <!--  阶段 2 泳道: LLM 推理与权限                                  -->
+        <!-- ============================================================ -->
+        <rect x="15" y="138" width="970" height="95" rx="12" ry="12"
+              fill="#f9fffb" stroke="#10b981" stroke-width="1.4" opacity="0.55" />
+        <rect x="28" y="127" width="230" height="20" rx="5" ry="5" fill="#10b981" />
+        <text x="46" y="141" style="font-size:11.5px;fill:#fff;font-weight:600;letter-spacing:0.4px;">
+          阶段 ② · LLM 流式推理与权限
+        </text>
+
+        <g>
+          <!-- ⑤ 流式 LLM (左→右第1个，从阶段1引过来) -->
+          <rect class="flow-node success" x="700" y="160" width="270" height="60" />
+          <text class="flow-text" x="835" y="182">⑤ SSE 流式调用 LLM</text>
+          <text class="flow-text small" x="835" y="202">token 逐字输出 · tool_calls 聚合</text>
+
+          <line x1="700" y1="190" x2="670" y2="190" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow)" />
+
+          <rect class="flow-node" x="500" y="160" width="170" height="60" />
+          <text class="flow-text" x="585" y="182">⑥ 检测 ::options</text>
+          <text class="flow-text small" x="585" y="202">有选项 → 暂停工具调用</text>
+
+          <line x1="500" y1="190" x2="470" y2="190" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow)" />
+
+          <rect class="flow-node" x="290" y="160" width="180" height="60" />
+          <text class="flow-text" x="380" y="182">⑦ tool_calls 判定</text>
+          <text class="flow-text small" x="380" y="202">有工具 → 查三级权限</text>
+
+          <line x1="290" y1="190" x2="260" y2="190" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow)" />
+
+          <rect class="flow-node warning" x="40" y="160" width="220" height="60" />
+          <text class="flow-text" x="150" y="182">⑧ 权限弹窗 confirm</text>
+          <text class="flow-text small" x="150" y="202">always 自动 · confirm 手批 · forbid 拒绝</text>
+        </g>
+
+        <!-- 阶段 2 → 阶段 3 垂直转折箭头 (从阶段②左下角向下→向右到阶段③) -->
+        <g stroke="#4d53e8" stroke-width="1.6" fill="none" marker-end="url(#arrowP)">
+          <path d="M 150 220 L 150 250 L 150 272" />
+        </g>
+
+        <!-- ============================================================ -->
+        <!--  阶段 3 泳道: 工具执行与回灌                                  -->
+        <!-- ============================================================ -->
+        <rect x="15" y="255" width="970" height="95" rx="12" ry="12"
+              fill="#fffbeb" stroke="#f59e0b" stroke-width="1.4" opacity="0.55" />
+        <rect x="28" y="244" width="230" height="20" rx="5" ry="5" fill="#f59e0b" />
+        <text x="46" y="258" style="font-size:11.5px;fill:#fff;font-weight:600;letter-spacing:0.4px;">
+          阶段 ③ · 工具执行与结果回灌
+        </text>
+
+        <g>
+          <rect class="flow-node accent" x="35" y="276" width="210" height="60" />
+          <text class="flow-text" x="140" y="298">⑨ 前端执行工具</text>
+          <text class="flow-text small" x="140" y="318">canvas/manage/navigate/query</text>
+
+          <line x1="245" y1="306" x2="280" y2="306" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow)" />
+
+          <rect class="flow-node" x="280" y="276" width="185" height="60" />
+          <text class="flow-text" x="372" y="298">⑩ createPlan 场景</text>
+          <text class="flow-text small" x="372" y="318">生成 steps 计划 · 暂不执行</text>
+
+          <line x1="465" y1="306" x2="500" y2="306" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow)" />
+
+          <rect class="flow-node" x="500" y="276" width="195" height="60" />
+          <text class="flow-text" x="597" y="298">⑪ executeStep 循环</text>
+          <text class="flow-text small" x="597" y="318">runNode 失败 → updateNode 重试</text>
+
+          <line x1="695" y1="306" x2="730" y2="306" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow)" />
+
+          <rect class="flow-node success" x="730" y="276" width="240" height="60" />
+          <text class="flow-text" x="850" y="298">⑫ toolResult 回灌后端</text>
+          <text class="flow-text small" x="850" y="318">保存 tool 消息 · 重新 streamLlm</text>
+        </g>
+
+        <!-- 阶段 3 → 阶段 4 垂直转折箭头 -->
+        <g stroke="#4d53e8" stroke-width="1.6" fill="none" marker-end="url(#arrowP)">
+          <path d="M 850 336 L 850 366 L 925 366" />
+        </g>
+
+        <!-- ============================================================ -->
+        <!--  阶段 4 泳道: 结果呈现与画布落地                              -->
+        <!-- ============================================================ -->
+        <rect x="15" y="372" width="970" height="95" rx="12" ry="12"
+              fill="#fef2f7" stroke="#db2777" stroke-width="1.4" opacity="0.55" />
+        <rect x="28" y="361" width="230" height="20" rx="5" ry="5" fill="#db2777" />
+        <text x="46" y="375" style="font-size:11.5px;fill:#fff;font-weight:600;letter-spacing:0.4px;">
+          阶段 ④ · 结果呈现与画布落地
+        </text>
+
+        <g>
+          <rect class="flow-node accent" x="770" y="394" width="200" height="60" />
+          <text class="flow-text" x="870" y="416">⑬ 会话消息保存</text>
+          <text class="flow-text small" x="870" y="436">assistant + tool_calls JSON 入库</text>
+
+          <line x1="770" y1="424" x2="735" y2="424" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow)" />
+
+          <rect class="flow-node" x="550" y="394" width="185" height="60" />
+          <text class="flow-text" x="642" y="416">⑭ 调试事件上报</text>
+          <text class="flow-text small" x="642" y="436">context/request/response/toolResult</text>
+
+          <line x1="550" y1="424" x2="515" y2="424" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow)" />
+
+          <rect class="flow-node" x="290" y="394" width="225" height="60" />
+          <text class="flow-text" x="402" y="416">⑮ 前端呈现</text>
+          <text class="flow-text small" x="402" y="436">MessageList + PlanCard + ToolCard</text>
+
+          <line x1="290" y1="424" x2="255" y2="424" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow)" />
+
+          <rect class="flow-node success" x="35" y="394" width="220" height="60" />
+          <text class="flow-text" x="145" y="416">⑯ 画布实时更新</text>
+          <text class="flow-text small" x="145" y="436">节点/连线/布局 即时生效</text>
+        </g>
+
+        <!-- 底部循环线 (阶段④→阶段② 新一轮对话) -->
+        <g stroke="#4d53e8" stroke-width="1.5" fill="none" stroke-dasharray="6,4" marker-end="url(#arrowP)">
+          <path d="M 145 454 L 145 510 L 835 510 L 835 467" />
+        </g>
+        <rect x="380" y="496" width="240" height="24" rx="6" ry="6" fill="#eef0ff" stroke="#4d53e8" stroke-width="1" />
+        <text x="500" y="512" text-anchor="middle"
+              style="font-size:12px;fill:#4d53e8;font-weight:600;">
+          🔁 继续对话 · 新一轮 LLM 推理
+        </text>
+      </svg>
+    </div>
+
+    <!-- ================= 节点类型表 ================= -->
+    <h3 style="margin-top: 56px;">🎯 支持的 12 种画布节点</h3>
+    <table style="margin-bottom: 32px;">
+      <thead>
+        <tr>
+          <th style="width: 14%;">节点类型</th>
+          <th style="width: 10%;">图标</th>
+          <th style="width: 30%;">核心功能</th>
+          <th>关键字段 (data 简写)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>start</code></td><td>🟢</td><td>工作流入口，定义工作流输入 schema</td>
+          <td><code>outputs</code> 定义输出字段 (JSON Schema)</td></tr>
+        <tr><td><code>end</code></td><td>🔴</td><td>工作流出口，汇聚最终结果</td>
+          <td><code>inputsValues.result</code> 使用 ref 引用上游</td></tr>
+        <tr><td><code>llm</code></td><td>🤖</td><td>调用大模型完成生成/分类/总结任务</td>
+          <td><code>prompt, systemPrompt, temperature, modelName, apiKey, apiHost</code></td></tr>
+        <tr><td><code>code</code></td><td>💻</td><td>执行 Java / JS 代码，处理数据变换</td>
+          <td><code>script.{language, content}, outputs</code></td></tr>
+        <tr><td><code>http</code></td><td>🌐</td><td>发起 HTTP 请求调用外部 API</td>
+          <td><code>method, url, headers, body, timeout</code></td></tr>
+        <tr><td><code>condition</code></td><td>🔀</td><td>单条件 true/false 两分支路由</td>
+          <td><code>conditions[].{left{ref}, operator, value}</code></td></tr>
+        <tr><td><code>branches</code></td><td>🌳</td><td>多分支条件判断，N 条输出端口</td>
+          <td><code>branches[].{conditions, targetPort}</code></td></tr>
+        <tr><td><code>loop</code></td><td>🔁</td><td>对数组进行循环迭代处理</td>
+          <td><code>loopFor{ref}, loopOutputs</code></td></tr>
+        <tr><td><code>variable</code></td><td>📦</td><td>赋值 / 变换中间变量</td>
+          <td><code>inputsValues, outputs</code></td></tr>
+        <tr><td><code>string-format</code></td><td>🔤</td><td>SpEL 表达式字符串格式化</td>
+          <td><code>script.content</code> SpEL: <code>'Result: ' + #start.text</code></td></tr>
+        <tr><td><code>assignee</code></td><td>👤</td><td>标记节点负责人 (组织协作)</td>
+          <td><code>owner, dueDate</code></td></tr>
+        <tr><td><code>comment</code></td><td>💬</td><td>画布注释，不参与执行</td>
+          <td><code>text, color</code></td></tr>
+      </tbody>
+    </table>
+
+    <!-- ================= 工具矩阵 ================= -->
+    <h3 style="margin-top: 48px;">🛠️ 6 大复合工具与 20+ 子动作矩阵</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 14%;">复合工具</th>
+          <th style="width: 28%;">子动作 (action)</th>
+          <th style="width: 12%;">默认策略</th>
+          <th style="width: 12%;">工具组</th>
+          <th>功能说明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code class="inline">navigate</code></td>
+          <td><code>home</code> · <code>admin</code> · <code>releases</code> · <code>editor</code> · <code>templateEditor</code></td>
+          <td><span class="badge badge-green">always</span></td>
+          <td>navigation</td>
+          <td>路由跳转，携带 workflowCode / templateCode</td>
+        </tr>
+        <tr>
+          <td><code class="inline">query</code></td>
+          <td><code>workflows</code> · <code>templates</code> · <code>logs</code> · <code>workflowDetail</code> · <code>nodeDetail</code> · <code>availableVariables</code></td>
+          <td><span class="badge badge-green">always</span></td>
+          <td>query</td>
+          <td>只读查询，返回资源列表或详情</td>
+        </tr>
+        <tr>
+          <td><code class="inline">manage</code></td>
+          <td><code>createWorkflow</code> · <code>createTemplate</code> · <code>saveWorkflow</code> · <code>deleteWorkflow</code></td>
+          <td><span class="badge badge-green">always</span></td>
+          <td>write</td>
+          <td>工作流 / 模板的增删改写操作</td>
+        </tr>
+        <tr>
+          <td><code class="inline">canvas</code></td>
+          <td><code>addNode</code> · <code>updateNode</code> · <code>deleteNode</code> · <code>connect</code> · <code>disconnect</code> · <code>autoLayout</code> · <code>runWorkflow</code> · <code>runNode</code></td>
+          <td><span class="badge badge-green">always</span></td>
+          <td>canvas</td>
+          <td>画布上的节点、连线、测试操作</td>
+        </tr>
+        <tr>
+          <td><code class="inline">createPlan</code></td>
+          <td>— (steps 数组参数)</td>
+          <td><span class="badge badge-green">always</span></td>
+          <td>plan</td>
+          <td>制定多步执行计划，返回 steps 列表不执行</td>
+        </tr>
+        <tr>
+          <td><code class="inline">executeStep</code></td>
+          <td>— (stepIndex 数字参数)</td>
+          <td><span class="badge badge-green">always</span></td>
+          <td>plan</td>
+          <td>执行 createPlan 中的第 N 步，根据结果决定下一步</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ================= 配置中心 Tab ================= -->
+    <h3 style="margin-top: 56px;">⚙️ Agent 配置中心 · 6 大管理模块</h3>
+    <div class="tab-bar">
+      <div class="tab-item active">模型配置</div>
+      <div class="tab-item active">Embedding</div>
+      <div class="tab-item active">提示词 & 知识库</div>
+      <div class="tab-item active">工具定义</div>
+      <div class="tab-item active">权限设置</div>
+      <div class="tab-item active">知识图谱</div>
+    </div>
+    <div class="grid-3">
+      <div class="card">
+        <h4>LLM 模型配置</h4>
+        <p>在线编辑，保存后即时生效（无缓存）</p>
+        <ul>
+          <li>apiHost / apiKey</li>
+          <li>model / temperature</li>
+          <li>maxTokens / contextWindow</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Embedding 配置</h4>
+        <p>独立于 LLM，留空自动复用 LLM 配置</p>
+        <ul>
+          <li>启用 / 禁用开关</li>
+          <li>独立 apiHost / apiKey / model</li>
+          <li>不支持时自动关键词降级</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>提示词 & 知识库</h4>
+        <p>系统提示词 DB 存储，覆盖 classpath 默认</p>
+        <ul>
+          <li>提示词：新建 / 重命名 / 删除</li>
+          <li>知识库分块 CRUD</li>
+          <li>AI 辅助生成内容按钮</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>工具定义管理</h4>
+        <p>DB-first 加载，修改后 refresh() 热更新</p>
+        <ul>
+          <li>工具名 / 描述 / 参数 schema</li>
+          <li>默认权限策略</li>
+          <li>pageContexts 页面过滤</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>权限策略设置</h4>
+        <p>三级权限层级：会话级 > 全局 > 默认</p>
+        <ul>
+          <li><span class="badge badge-green">always</span> 自动执行</li>
+          <li><span class="badge badge-orange">confirm</span> 每次确认</li>
+          <li><span class="badge badge-red">forbid</span> 禁止执行</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>知识图谱</h4>
+        <p>节点 + 边 的概念图，用于检索上下文补充</p>
+        <ul>
+          <li>图谱节点 CRUD (title/type/properties)</li>
+          <li>图谱边 CRUD (source/type/target)</li>
+          <li>按关键词检索邻居子图</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================ 技术部分 ================================ -->
+  <section>
+    <div class="section-label">Part 02 · 技术架构</div>
+    <h2>技术栈与系统架构</h2>
+    <p class="section-desc">
+      前后端分离 + SSE 流式通信 + DB-first 配置热加载。后端 Spring Boot (Java) 负责
+      LLM 编排、RAG 检索、工具注册与持久化；前端 React 18 + Semi UI 负责对话面板、
+      画布操作、调试面板与配置管理。
+    </p>
+
+    <!-- 技术栈 -->
+    <h3>🏗️ 整体技术栈</h3>
+    <div class="grid-2" style="margin-bottom: 48px;">
+      <div class="card">
+        <h4>☕ 后端 (Spring Boot)</h4>
+        <ul>
+          <li>Java 17 + Spring Boot 3.x</li>
+          <li>MyBatis-Plus + MySQL (agent 系列表)</li>
+          <li>HttpURLConnection 原生调用 LLM (零依赖)</li>
+          <li>SseEmitter 流式推送</li>
+          <li>Hutool JSON (JSONObject/JSONArray)</li>
+          <li>Executors.newCachedThreadPool 异步</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>⚛️ 前端 (React)</h4>
+        <ul>
+          <li>React 18 + TypeScript</li>
+          <li>React Router 6 + Context 状态管理</li>
+          <li>Semi Design (字节跳动 UI 库)</li>
+          <li>Rsbuild 构建 + Tailwind CSS</li>
+          <li>nanoid 生成唯一 ID</li>
+          <li>React Flow (画布底层引擎)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 系统架构图 -->
+    <h3>📐 系统分层架构图</h3>
+    <div class="flow-diagram">
+      <svg viewBox="0 0 1000 780" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#9ca3af" />
+          </marker>
+          <marker id="arrow2-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#4d53e8" />
+          </marker>
+        </defs>
+
+        <!-- ============================================================ -->
+        <!--  LAYER 1: FRONTEND 泳道（容器框包裹整层）                    -->
+        <!-- ============================================================ -->
+        <!-- 泳道背景容器 -->
+        <rect x="15" y="30" width="970" height="255" rx="14" ry="14"
+              fill="#fafbff" stroke="#4d53e8" stroke-width="1.5" stroke-dasharray="0" opacity="0.6" />
+        <!-- 层标签条 -->
+        <rect x="30" y="18" width="260" height="22" rx="6" ry="6" fill="#4d53e8" />
+        <text x="50" y="33" style="font-size:12px;fill:#fff;font-weight:600;letter-spacing:0.5px;">
+          ① FRONTEND · React 18 + Semi UI
+        </text>
+
+        <!-- 子层 A: UI 组件 (4 列等宽) -->
+        <g>
+          <rect class="flow-node accent" x="40" y="60" width="218" height="60" />
+          <text class="flow-text" x="149" y="82">AgentDockPanel</text>
+          <text class="flow-text small" x="149" y="105">浮动对话面板 · 输入框 · 会话列表</text>
+
+          <rect class="flow-node" x="273" y="60" width="218" height="60" />
+          <text class="flow-text" x="382" y="82">MessageList</text>
+          <text class="flow-text small" x="382" y="105">消息渲染 · ToolCard · PlanCard</text>
+
+          <rect class="flow-node" x="506" y="60" width="218" height="60" />
+          <text class="flow-text" x="615" y="82">DebugPanel</text>
+          <text class="flow-text small" x="615" y="105">列表面板 · Raw 详情 · 跳转聚焦</text>
+
+          <rect class="flow-node" x="739" y="60" width="230" height="60" />
+          <text class="flow-text" x="854" y="82">Workflow Canvas</text>
+          <text class="flow-text small" x="854" y="105">React Flow · 拖拽连线 · 自动布局</text>
+        </g>
+
+        <!-- 子层 B: 全局状态 (AgentContext) -->
+        <g>
+          <rect class="flow-node success" x="40" y="138" width="929" height="50" />
+          <text class="flow-text" x="504" y="156">
+            AgentContext (全局状态)：sessions · messages · permissions · tokenUsage · debugEntries · activePlan · ToolExecutor
+          </text>
+        </g>
+
+        <!-- 子层 C: API Layer -->
+        <g>
+          <rect class="flow-node" x="40" y="206" width="929" height="45" />
+          <text class="flow-text" x="504" y="229">
+            API Layer：agentApi (REST) ＋ sse-client (streamChat / streamToolResult / streamCompact)
+          </text>
+        </g>
+
+        <!-- 泳道内垂直分隔箭头（UI组件 → AgentContext） -->
+        <line x1="504" y1="120" x2="504" y2="138" stroke="#9ca3af" stroke-width="1.2"
+              marker-end="url(#arrow2)" />
+        <!-- （AgentContext → API Layer） -->
+        <line x1="504" y1="188" x2="504" y2="206" stroke="#9ca3af" stroke-width="1.2"
+              marker-end="url(#arrow2)" />
+
+        <!-- ============================================================ -->
+        <!--  通信层：前端 ↔ 后端                                          -->
+        <!-- ============================================================ -->
+        <g>
+          <!-- 主垂直箭头 -->
+          <line x1="500" y1="285" x2="500" y2="345"
+                stroke="#4d53e8" stroke-width="2.2" marker-end="url(#arrow2-accent)" />
+          <!-- 上半反向虚线（表示请求/响应双向） -->
+          <line x1="486" y1="345" x2="486" y2="295"
+                stroke="#4d53e8" stroke-width="1" stroke-dasharray="4,3" />
+          <!-- 中间通信协议标签（白色背景框包裹） -->
+          <rect x="510" y="303" width="92" height="24" rx="5" ry="5"
+                fill="#eef0ff" stroke="#4d53e8" stroke-width="1" />
+          <text x="556" y="319" text-anchor="middle"
+                style="font-size:12px;fill:#4d53e8;font-weight:600;">HTTP / SSE</text>
+        </g>
+
+        <!-- ============================================================ -->
+        <!--  LAYER 2: BACKEND 泳道（容器框包裹整层）                     -->
+        <!-- ============================================================ -->
+        <rect x="15" y="355" width="970" height="275" rx="14" ry="14"
+              fill="#f9fffb" stroke="#10b981" stroke-width="1.5" opacity="0.6" />
+        <rect x="30" y="343" width="280" height="22" rx="6" ry="6" fill="#10b981" />
+        <text x="50" y="358" style="font-size:12px;fill:#fff;font-weight:600;letter-spacing:0.5px;">
+          ② BACKEND · Spring Boot 3.x
+        </text>
+
+        <!-- 子层 A: Controllers (4 列等宽) -->
+        <g>
+          <rect class="flow-node accent" x="40" y="380" width="222" height="55" />
+          <text class="flow-text" x="151" y="402">AgentChatController</text>
+          <text class="flow-text small" x="151" y="422">/chat · /tool-result · /compact</text>
+
+          <rect class="flow-node accent" x="274" y="380" width="222" height="55" />
+          <text class="flow-text" x="385" y="402">AgentSessionController</text>
+          <text class="flow-text small" x="385" y="422">会话 CRUD · rename · debug_data</text>
+
+          <rect class="flow-node accent" x="508" y="380" width="222" height="55" />
+          <text class="flow-text" x="619" y="402">AgentConfigController</text>
+          <text class="flow-text small" x="619" y="422">llm_config · embedding_config</text>
+
+          <rect class="flow-node accent" x="742" y="380" width="227" height="55" />
+          <text class="flow-text" x="855" y="402">Management Controllers</text>
+          <text class="flow-text small" x="855" y="422">tool · knowledge · graph</text>
+        </g>
+
+        <!-- 子层 A → B 箭头（统一 4 个中点向下） -->
+        <g stroke="#9ca3af" stroke-width="1.2" marker-end="url(#arrow2)">
+          <line x1="151" y1="435" x2="151" y2="455" />
+          <line x1="385" y1="435" x2="385" y2="455" />
+          <line x1="619" y1="435" x2="619" y2="455" />
+          <line x1="855" y1="435" x2="855" y2="455" />
+        </g>
+
+        <!-- 子层 B: Core Services (3 列) -->
+        <g>
+          <rect class="flow-node success" x="40" y="455" width="297" height="70" />
+          <text class="flow-text" x="188" y="478">AgentChatService</text>
+          <text class="flow-text" x="188" y="495" style="font-size:11.5px;fill:#374151;">核心编排</text>
+          <text class="flow-text small" x="188" y="515">chat() · toolResult() · streamLlm()</text>
+
+          <rect class="flow-node success" x="352" y="455" width="280" height="70" />
+          <text class="flow-text" x="492" y="478">AgentToolRegistry</text>
+          <text class="flow-text" x="492" y="495" style="font-size:11.5px;fill:#374151;">工具注册中心</text>
+          <text class="flow-text small" x="492" y="515">getToolsSchema() · DB-first · refresh()</text>
+
+          <rect class="flow-node success" x="647" y="455" width="322" height="70" />
+          <text class="flow-text" x="808" y="478">AgentModelConfigService</text>
+          <text class="flow-text" x="808" y="495" style="font-size:11.5px;fill:#374151;">配置中心</text>
+          <text class="flow-text small" x="808" y="515">三级兜底: DB → LLM → yml</text>
+        </g>
+
+        <!-- 子层 B → C 箭头 -->
+        <g stroke="#9ca3af" stroke-width="1.2" marker-end="url(#arrow2)">
+          <line x1="188" y1="525" x2="188" y2="545" />
+          <line x1="492" y1="525" x2="492" y2="545" />
+          <line x1="808" y1="525" x2="808" y2="545" />
+        </g>
+
+        <!-- 子层 C: Supporting Services (3 列) -->
+        <g>
+          <rect class="flow-node warning" x="40" y="545" width="297" height="55" />
+          <text class="flow-text" x="188" y="567">EmbeddingService</text>
+          <text class="flow-text small" x="188" y="588">向量化 · null 触发关键词降级</text>
+
+          <rect class="flow-node warning" x="352" y="545" width="280" height="55" />
+          <text class="flow-text" x="492" y="567">AgentDataSeeder</text>
+          <text class="flow-text small" x="492" y="588">启动建种 · ensureSeeded()</text>
+
+          <rect class="flow-node warning" x="647" y="545" width="322" height="55" />
+          <text class="flow-text" x="808" y="567">SubagentService</text>
+          <text class="flow-text small" x="808" y="588">debugNode() · 单节点独立 Agent</text>
+        </g>
+
+        <!-- ============================================================ -->
+        <!--  Backend → Data 层箭头                                       -->
+        <!-- ============================================================ -->
+        <g>
+          <line x1="500" y1="630" x2="500" y2="680"
+                stroke="#9ca3af" stroke-width="1.8" marker-end="url(#arrow2)" />
+        </g>
+
+        <!-- ============================================================ -->
+        <!--  LAYER 3: DATA LAYER 泳道（容器框包裹 — 用户要求必须框住）   -->
+        <!-- ============================================================ -->
+        <rect x="15" y="690" width="970" height="80" rx="14" ry="14"
+              fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5" opacity="0.65" />
+        <rect x="30" y="678" width="300" height="22" rx="6" ry="6" fill="#f59e0b" />
+        <text x="50" y="693" style="font-size:12px;fill:#fff;font-weight:600;letter-spacing:0.5px;">
+          ③ DATA LAYER · MySQL 8.0 + MyBatis-Plus
+        </text>
+
+        <!-- 数据表集合 (6 个小框，均分布局) -->
+        <g>
+          <rect x="40" y="712" width="146" height="44" rx="8" ry="8"
+                fill="#fff" stroke="#f59e0b" stroke-width="1.2" />
+          <text x="113" y="730" text-anchor="middle"
+                style="font-size:12px;font-weight:600;fill:#92400e;">agent_session</text>
+          <text x="113" y="747" text-anchor="middle" class="flow-text small">会话 / 标题 / debug</text>
+
+          <rect x="200" y="712" width="146" height="44" rx="8" ry="8"
+                fill="#fff" stroke="#f59e0b" stroke-width="1.2" />
+          <text x="273" y="730" text-anchor="middle"
+                style="font-size:12px;font-weight:600;fill:#92400e;">agent_message</text>
+          <text x="273" y="747" text-anchor="middle" class="flow-text small">对话 / tool_calls</text>
+
+          <rect x="360" y="712" width="146" height="44" rx="8" ry="8"
+                fill="#fff" stroke="#f59e0b" stroke-width="1.2" />
+          <text x="433" y="730" text-anchor="middle"
+                style="font-size:12px;font-weight:600;fill:#92400e;">agent_config</text>
+          <text x="433" y="747" text-anchor="middle" class="flow-text small">模型 / 提示词 / 节点KB</text>
+
+          <rect x="520" y="712" width="146" height="44" rx="8" ry="8"
+                fill="#fff" stroke="#f59e0b" stroke-width="1.2" />
+          <text x="593" y="730" text-anchor="middle"
+                style="font-size:12px;font-weight:600;fill:#92400e;">agent_tool_def</text>
+          <text x="593" y="747" text-anchor="middle" class="flow-text small">工具 schema · 权限策略</text>
+
+          <rect x="680" y="712" width="146" height="44" rx="8" ry="8"
+                fill="#fff" stroke="#f59e0b" stroke-width="1.2" />
+          <text x="753" y="730" text-anchor="middle"
+                style="font-size:12px;font-weight:600;fill:#92400e;">knowledge + graph</text>
+          <text x="753" y="747" text-anchor="middle" class="flow-text small">RAG 分块 · 图谱节点边</text>
+
+          <rect x="840" y="712" width="137" height="44" rx="8" ry="8"
+                fill="#fff" stroke="#f59e0b" stroke-width="1.2" />
+          <text x="908" y="730" text-anchor="middle"
+                style="font-size:12px;font-weight:600;fill:#92400e;">workflow + tpl</text>
+          <text x="908" y="747" text-anchor="middle" class="flow-text small">实例 · 模板数据</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- 后端核心流程 -->
+    <h3 style="margin-top: 56px;">🔍 AgentChatService · 对话主流程详解</h3>
+    <div class="split">
+      <div>
+        <h4>📥 chat() 入口方法 (15 步)</h4>
+        <ol class="steps">
+          <li>
+            <h4>保存用户消息</h4>
+            <p>saveMessage() 写入 agent_message，支持多模态 images 数组</p>
+          </li>
+          <li>
+            <h4>异步生成会话标题</h4>
+            <p>首条消息触发 tryAutoGenerateTitle()，LLM 压缩为 ≤15 字</p>
+          </li>
+          <li>
+            <h4>加载模型配置</h4>
+            <p>modelConfigService.getLlmConfig()，DB 优先 yml 兜底</p>
+          </li>
+          <li>
+            <h4>加载历史消息</h4>
+            <p>loadMessages()，最近 200 条 + user 边界截断防悬空 tool</p>
+          </li>
+          <li>
+            <h4>系统提示词装配</h4>
+            <p>DB agent_config → classpath prompt-zh.md，追加 pageContext</p>
+          </li>
+          <li>
+            <h4>RAG 知识库检索</h4>
+            <p>buildRagContext()：向量余弦相似度 TOP3 → 降级关键词 LIKE</p>
+          </li>
+          <li>
+            <h4>节点知识库注入</h4>
+            <p>buildNodeKnowledgeContext()，agent_config 40 条 node_knowledge 按 locale 过滤</p>
+          </li>
+          <li>
+            <h4>知识图谱检索</h4>
+            <p>buildGraphContext()，按关键词匹配节点 + 邻居边</p>
+          </li>
+          <li>
+            <h4>模板参考加载</h4>
+            <p>buildTemplateContext()，TOP20 模板节点数与类型摘要</p>
+          </li>
+          <li>
+            <h4>工具 schema 加载</h4>
+            <p>toolRegistry.getToolsSchema()，6 个复合工具完整定义</p>
+          </li>
+          <li>
+            <h4>Token 估算 + 压缩</h4>
+            <p>estimateMessagesTokens()，≥90% 强制 compactHistoryInline()</p>
+          </li>
+          <li>
+            <h4>发送 context_loaded 事件</h4>
+            <p>所有上下文统计 + ragContext/nodeKbContext 原文</p>
+          </li>
+          <li>
+            <h4>发送 debug_request 事件</h4>
+            <p>完整 messages 数组 + toolsCount + toolsSchema 全量</p>
+          </li>
+          <li>
+            <h4>SSE 调用 LLM</h4>
+            <p>逐 token 推送，tool_calls 按 index 聚合 (TreeMap)</p>
+          </li>
+          <li>
+            <h4>保存 assistant + 执行工具</h4>
+            <p>检测 ::options 跳过工具；handleToolCalls() 查三级权限推送事件</p>
+          </li>
+        </ol>
+      </div>
+      <div>
+        <h4>🔁 toolResult() 回灌流程</h4>
+        <ol class="steps">
+          <li>
+            <h4>批量保存 tool 消息</h4>
+            <p>每个 tool 结果写入 agent_message (role=tool, toolCallId)</p>
+          </li>
+          <li>
+            <h4>发送 debug_tool_result 事件</h4>
+            <p>调试面板可查看每个工具实际执行结果</p>
+          </li>
+          <li>
+            <h4>再次 streamLlm()</h4>
+            <p>新一轮 LLM 推理，tool 结果作为对话历史继续</p>
+          </li>
+        </ol>
+
+        <h4 style="margin-top: 32px;">💾 compact() 上下文压缩流程</h4>
+        <ol class="steps">
+          <li>
+            <h4>取 contextWindow 阈值</h4>
+            <p>从模型配置读取，默认 32768</p>
+          </li>
+          <li>
+            <h4>估算全部历史 token</h4>
+            <p>estimateTokens()，中文场景按 /2.5 chars</p>
+          </li>
+          <li>
+            <h4>低于阈值直接返回</h4>
+            <p>消息 &lt;6 条 或 占比 &lt;50% 不压缩</p>
+          </li>
+          <li>
+            <h4>对半切分</h4>
+            <p>前半段送去 LLM 摘要，后半段原样保留</p>
+          </li>
+          <li>
+            <h4>LLM 摘要</h4>
+            <p>非流式调用，temperature=0.3，max_tokens=500</p>
+          </li>
+          <li>
+            <h4>删除旧消息 + 插入摘要</h4>
+            <p>role=system，内容前缀 "对话历史摘要:"</p>
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- 核心算法：RAG 检索流程 -->
+    <h3 style="margin-top: 56px;">🧠 核心算法 · RAG 检索与 Embedding 降级</h3>
+    <div class="flow-diagram" style="margin-bottom: 40px;">
+      <svg viewBox="0 0 1000 360" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#9ca3af" />
+          </marker>
+        </defs>
+
+        <rect class="flow-node" x="30" y="30" width="160" height="60" />
+        <text class="flow-text" x="110" y="55">用户问题文本</text>
+        <text class="flow-text small" x="110" y="75">extractLastUserText()</text>
+
+        <line class="flow-arrow" x1="190" y1="60" x2="230" y2="60" />
+
+        <rect class="flow-node accent" x="230" y="30" width="220" height="60" />
+        <text class="flow-text" x="340" y="55">EmbeddingService.embed()</text>
+        <text class="flow-text small" x="340" y="75">检查 enabled + 调用 /embeddings API</text>
+
+        <line class="flow-arrow" x1="340" y1="90" x2="340" y2="130" />
+        <text class="flow-text small" x="360" y="115">✅ 返回向量 double[]</text>
+
+        <rect class="flow-node success" x="230" y="130" width="220" height="60" />
+        <text class="flow-text" x="340" y="155">向量余弦相似度</text>
+        <text class="flow-text small" x="340" y="175">全量 embedding 不为空的分块 · 排序取 TOP3</text>
+
+        <line class="flow-arrow" x1="450" y1="160" x2="510" y2="160" />
+
+        <rect class="flow-node warning" x="510" y="130" width="180" height="60" />
+        <text class="flow-text" x="600" y="155">有结果 ?</text>
+        <text class="flow-text small" x="600" y="175">!result.isEmpty()</text>
+
+        <line class="flow-arrow accent" x1="600" y1="190" x2="600" y2="230" />
+        <text class="flow-text small" x="610" y="218">✅ TOP3 返回</text>
+
+        <rect class="flow-node success" x="500" y="270" width="200" height="60" />
+        <text class="flow-text" x="600" y="295">RagResult(..., degraded=false)</text>
+        <text class="flow-text small" x="600" y="315">前端显示绿色正常标识</text>
+
+        <!-- 降级路径 -->
+        <line class="flow-arrow" x1="450" y1="60" x2="510" y2="160" stroke-dasharray="4,4" />
+        <text class="flow-text small" x="440" y="95" style="fill:#ef4444">❌ null / 空结果</text>
+
+        <path class="flow-arrow" d="M 690 160 L 770 160 L 770 80 L 810 80" />
+        <text class="flow-text small" x="730" y="75" style="fill:#f59e0b">⚠️ 降级路径</text>
+
+        <rect class="flow-node warning" x="810" y="50" width="160" height="60" />
+        <text class="flow-text" x="890" y="75">searchByKeywords()</text>
+        <text class="flow-text small" x="890" y="95">标点分词 · LIKE 匹配 · 合并去重</text>
+
+        <line class="flow-arrow accent" x1="890" y1="110" x2="890" y2="230" />
+
+        <rect class="flow-node" x="810" y="230" width="160" height="60" />
+        <text class="flow-text" x="890" y="255">TOP3 关键词结果</text>
+        <text class="flow-text small" x="890" y="275">每个关键词 LIMIT 5</text>
+
+        <line class="flow-arrow" x1="890" y1="290" x2="890" y2="330" />
+        <line class="flow-arrow" x1="600" y1="330" x2="890" y2="330" />
+
+        <text class="flow-text small" x="745" y="348" style="fill:#ef4444;">👉 RagResult(..., degraded=true) · 前端 DebugPanel 红色降级标识</text>
+      </svg>
+    </div>
+
+    <!-- 算法细节 -->
+    <div class="grid-3">
+      <div class="card">
+        <h4>📐 余弦相似度公式</h4>
+        <pre>cos(θ) = Σ(Aᵢ × Bᵢ)
+  / √(ΣAᵢ²) × √(ΣBᵢ²)
+
+全量分块逐一计算，
+降序排序取 TOP 3。</pre>
+      </div>
+      <div class="card">
+        <h4>🔤 关键词分词规则</h4>
+        <pre>正则：[\s,，。.;；、？?！!]+
+过滤：长度 &lt; 2 的词丢弃
+策略：每词 LIKE LIMIT 5 → 去重
+     → 满 3 条提前 break</pre>
+      </div>
+      <div class="card">
+        <h4>🧩 Token 估算公式</h4>
+        <pre>messages 中 role + content
+   拼接后 chars.length / 2.5
+（中英混合场景更准确）
+
+占比：estimated / contextWindow
+≥80% 预警 · ≥90% 强制压缩</pre>
+      </div>
+    </div>
+
+    <!-- 占位符解析 -->
+    <h3 style="margin-top: 56px;">🧩 关键机制 · 占位符解析 ($0/$1 + ref)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 18%;">占位符类型</th>
+          <th style="width: 22%;">示例</th>
+          <th>解析规则与适用场景</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>$N 节点索引</strong></td>
+          <td><code>$0</code> · <code>$1</code></td>
+          <td>引用 createPlan 中第 N 个 canvas(addNode) 返回的 nodeId。适用字段：nodeId、from、to、afterNodeId。非标准 nodeId 自动替换为最近一次创建的 nodeId（兜底）。</td>
+        </tr>
+        <tr>
+          <td><strong>ref 显式格式</strong></td>
+          <td><code>{"type":"ref","content":["$0","result"]}</code></td>
+          <td>end / variable / loop 节点 inputsValues 中引用上游节点输出字段。递归解析 $0 → 真实 nodeId。</td>
+        </tr>
+        <tr>
+          <td><strong>ref 简写格式</strong></td>
+          <td><code>{"ref":"start.text"}</code></td>
+          <td>condition 节点 conditions[].left 简写，系统自动 normalize 为显式 ref 格式。同样支持 $N 占位符。</td>
+        </tr>
+        <tr>
+          <td><strong>模板内联</strong></td>
+          <td><code>"分析 {{ start.text }}"</code></td>
+          <td>llm 节点 prompt / systemPrompt 的 Vue 模板语法引用上游输出。直接嵌入字符串，无需 JSON 结构。</td>
+        </tr>
+        <tr>
+          <td><strong>SpEL 表达式</strong></td>
+          <td><code>"'结果:' + #start_0.result"</code></td>
+          <td>string-format 节点 script.content，Spring Expression Language，引用节点名为变量名。</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- JSON 容错 -->
+    <h3 style="margin-top: 48px;">🛡️ 容错机制 · tool_calls JSON 补全</h3>
+    <div class="grid-2">
+      <div class="card">
+        <h4>场景</h4>
+        <p>小模型（qwen3-4b、deepseek 等）在深层嵌套的 createPlan steps 参数中，常输出缺失右花括号的 JSON，导致 parseObj 抛异常。</p>
+        <pre>正常：{"steps":[{"a":1},{"b":2}]}
+异常：{"steps":[{"a":1},{"b":2}   ← 少 2 个 }</pre>
+      </div>
+      <div class="card">
+        <h4>tryFixAndParse() 策略</h4>
+        <p><strong>模型无关</strong>的通用补全算法：</p>
+        <pre>1. 遍历字符串，跳过字符串内的花括号
+   (处理 \" 和 \\ 转义)
+2. 统计 { 与 } 的差值 diff = open - close
+3. diff > 0 时尾部追加 diff 个 }
+4. 仍失败 → 包装为 {"raw": argsStr} 返回</pre>
+      </div>
+    </div>
+
+    <!-- 数据库表 -->
+    <h3 style="margin-top: 56px;">🗄️ 数据库 · Agent 系列 12 张表</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 22%;">表名</th>
+          <th style="width: 12%;">关键字段</th>
+          <th>用途说明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>agent_session</code></td>
+          <td>session_key, title, debug_data</td>
+          <td>会话记录，title 自动生成/可编辑，debug_data 存储调试条目 JSON 数组持久化</td></tr>
+        <tr><td><code>agent_message</code></td>
+          <td>role, content, tool_calls, tool_call_id, images, page_context</td>
+          <td>对话消息表 (user/assistant/tool/system)，tool_calls 存完整 JSON，支持多模态</td></tr>
+        <tr><td><code>agent_config</code></td>
+          <td>config_type, config_key, content, config_data</td>
+          <td>KV 配置表：llm_config / embedding_config (config_data JSON) + system_prompt / node_knowledge (content 文本)</td></tr>
+        <tr><td><code>agent_tool_definition</code></td>
+          <td>tool_name, tool_group, description, parameters, default_policy, page_contexts, enabled, sort_order</td>
+          <td>工具注册定义，6 条记录对应 6 个复合工具，DB-first 热更新</td></tr>
+        <tr><td><code>agent_knowledge_chunk</code></td>
+          <td>title, content, language, embedding, keywords</td>
+          <td>RAG 知识库分块，embedding 存向量 JSON (可为空即走关键词降级)，language 区分 zh/en</td></tr>
+        <tr><td><code>agent_graph_node</code></td>
+          <td>node_key, title, node_type, properties</td>
+          <td>知识图谱节点 (概念/实体)，properties JSON 存 description 等扩展属性</td></tr>
+        <tr><td><code>agent_graph_edge</code></td>
+          <td>source_key, edge_type, target_key</td>
+          <td>知识图谱有向边，构成节点间的语义关系 (如 "包含" "属于" "实现")</td></tr>
+        <tr><td><code>agent_permission</code></td>
+          <td>session_key, action, policy</td>
+          <td><strong>会话级</strong>工具权限，单会话内对某个 action 的个性化策略</td></tr>
+        <tr><td><code>agent_global_permission</code></td>
+          <td>action, policy</td>
+          <td><strong>全局</strong>工具权限，跨会话对 action 的默认策略（优先级高于工具内 defaultPolicy）</td></tr>
+        <tr><td><code>agent_config_history</code></td>
+          <td>config_key, content, config_data, version, operator</td>
+          <td>配置变更历史版本，支持提示词/模型配置的版本回滚</td></tr>
+        <tr><td><code>gaia_workflow_template</code></td>
+          <td>template_code, template_name, template_desc, template_data</td>
+          <td>工作流模板表，createWorkflow 可引用，对话中作为模板参考注入系统提示词</td></tr>
+        <tr><td><code>gaia_workflow</code></td>
+          <td>workflow_code, name, description, workflow_data, status</td>
+          <td>实际工作流实例表，canvas 操作 saveWorkflow 持久化到该表</td></tr>
+      </tbody>
+    </table>
+
+    <!-- 前端组件数据流 -->
+    <h3 style="margin-top: 56px;">⚛️ 前端 · 核心组件与数据流</h3>
+    <div class="grid-2" style="margin-bottom: 32px;">
+      <div class="card">
+        <h4>🎯 核心文件一览</h4>
+        <ul>
+          <li><strong>AgentContext.tsx</strong> — 全局 Provider，状态管理核心</li>
+          <li><strong>AgentDockPanel.tsx</strong> — 浮动面板 UI (含输入框/顶栏/侧栏)</li>
+          <li><strong>AgentDock.tsx</strong> — Dock 外层容器，宽度动画 + FAB 按钮</li>
+          <li><strong>MessageList.tsx</strong> — 消息列表 (MessageItem/GroupedToolCard/OptionsCard)</li>
+          <li><strong>SessionList.tsx</strong> — 会话侧栏列表 (双击重命名)</li>
+          <li><strong>DebugPanel.tsx</strong> — 调试抽屉 + Raw 全屏面板</li>
+          <li><strong>PlanCard.tsx</strong> — createPlan 步骤卡片 (进度状态切换)</li>
+          <li><strong>sse-client.ts</strong> — SSE 流式封装 (ReadableStream 解析)</li>
+          <li><strong>tools.ts</strong> — 前端工具执行器 (6 工具分发改路由)</li>
+          <li><strong>api.ts</strong> — REST API 封装 (会话/配置/调试数据)</li>
+          <li><strong>types.ts</strong> — 完整类型定义 (DisplayMessage/ToolCallEvent/PlanStep)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>📊 AgentContext 状态字段</h4>
+        <ul>
+          <li><code>sessions: AgentSession[]</code> 会话列表</li>
+          <li><code>currentSessionKey: string</code> 当前会话</li>
+          <li><code>messages: DisplayMessage[]</code> 消息展示数组</li>
+          <li><code>permissions: Record&lt;action, policy&gt;</code> 三级权限缓存</li>
+          <li><code>streaming / queueLength</code> 流式状态 + 排队数</li>
+          <li><code>pendingConfirm: ToolCallEvent</code> 待确认工具弹窗</li>
+          <li><code>tokenUsage.{estimated, limit}</code> Token 用量条</li>
+          <li><code>debugEntries[] / debugPanelOpen</code> 调试条目与面板开关</li>
+          <li><code>focusDebugEntryId</code> 点击消息跳转聚焦</li>
+          <li><code>activePlan: ActivePlan | null</code> 当前 createPlan 计划</li>
+          <li><code>toolExecutor</code> 画布工具执行器回调注入</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 调试信息持久化 -->
+    <h3>💾 调试信息持久化 · localStorage + DB 双层</h3>
+    <div class="flow-diagram">
+      <svg viewBox="0 0 1000 390" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#9ca3af" />
+          </marker>
+          <marker id="arrow4-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#4d53e8" />
+          </marker>
+        </defs>
+
+        <!-- ============================================================ -->
+        <!--  泳道 A: 写入链路 (SSE → 内存 → localStorage → DB)          -->
+        <!-- ============================================================ -->
+        <rect x="15" y="25" width="970" height="155" rx="12" ry="12"
+              fill="#fafbff" stroke="#4d53e8" stroke-width="1.4" opacity="0.55" />
+        <rect x="28" y="14" width="300" height="20" rx="5" ry="5" fill="#4d53e8" />
+        <text x="46" y="28" style="font-size:11.5px;fill:#fff;font-weight:600;letter-spacing:0.4px;">
+          泳道 A · 写入链路（每次 SSE 事件触发）
+        </text>
+
+        <!-- 写入主流程：横向 3 节点 (水平对齐 y=55~110) -->
+        <g>
+          <rect class="flow-node accent" x="30" y="55" width="196" height="62" />
+          <text class="flow-text" x="128" y="78">① SSE Events 到达</text>
+          <text class="flow-text small" x="128" y="95">context_loaded / debug_request</text>
+          <text class="flow-text small" x="128" y="110">debug_response / debug_tool_result</text>
+
+          <line x1="226" y1="86" x2="260" y2="86" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow4)" />
+
+          <rect class="flow-node success" x="260" y="55" width="196" height="62" />
+          <text class="flow-text" x="358" y="78">② push debugEntries</text>
+          <text class="flow-text small" x="358" y="98">内存数组状态 → UI 立即刷新</text>
+
+          <line x1="456" y1="86" x2="490" y2="86" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow4)" />
+
+          <rect class="flow-node" x="490" y="55" width="218" height="62" />
+          <text class="flow-text" x="599" y="78">③ localStorage 同步写</text>
+          <text class="flow-text small" x="599" y="98">Key: agent-debug-${sessionKey}</text>
+        </g>
+
+        <!-- ③ → ④ 垂直转折箭头（从 localStorage 节点中心向下） -->
+        <g stroke="#4d53e8" stroke-width="1.6" fill="none" marker-end="url(#arrow4-accent)">
+          <path d="M 599 117 L 599 138" />
+        </g>
+        <!-- debounce 标签（独立带框，避免压箭头） -->
+        <rect x="620" y="130" width="116" height="22" rx="5" ry="5"
+              fill="#eef0ff" stroke="#4d53e8" stroke-width="1" />
+        <text x="678" y="145" text-anchor="middle"
+              style="font-size:11px;fill:#4d53e8;font-weight:600;">⏱ debounced 2s</text>
+
+        <!-- ④ DB 异步保存 -->
+        <g>
+          <rect class="flow-node warning" x="490" y="165" width="218" height="62" />
+          <text class="flow-text" x="599" y="188">④ DB 异步保存</text>
+          <text class="flow-text small" x="599" y="208">PATCH /agent/sessions/{key}/debug-data</text>
+        </g>
+
+        <!-- 写入链路：数据分层标识（右侧竖向小框，标 Tier） -->
+        <g>
+          <rect x="770" y="55" width="200" height="42" rx="6" ry="6"
+                fill="#fff" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3,3" />
+          <text x="870" y="72" text-anchor="middle" style="font-size:11px;fill:#4b5563;font-weight:600;">
+            Tier 1 · 实时层（内存）
+          </text>
+          <text x="870" y="88" text-anchor="middle" class="flow-text small">
+            刷新页面即丢失
+          </text>
+
+          <rect x="770" y="105" width="200" height="42" rx="6" ry="6"
+                fill="#fff" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3,3" />
+          <text x="870" y="122" text-anchor="middle" style="font-size:11px;fill:#4b5563;font-weight:600;">
+            Tier 2 · 浏览器层（localStorage）
+          </text>
+          <text x="870" y="138" text-anchor="middle" class="flow-text small">
+            跨刷新保留 · 本机可见
+          </text>
+
+          <rect x="770" y="155" width="200" height="42" rx="6" ry="6"
+                fill="#fff" stroke="#9ca3af" stroke-width="1" stroke-dasharray="3,3" />
+          <text x="870" y="172" text-anchor="middle" style="font-size:11px;fill:#4b5563;font-weight:600;">
+            Tier 3 · 服务端层（MySQL）
+          </text>
+          <text x="870" y="188" text-anchor="middle" class="flow-text small">
+            跨设备 · 永久 · 权威数据
+          </text>
+        </g>
+
+        <!-- ============================================================ -->
+        <!--  泳道 B: 切换会话读取链路                                    -->
+        <!-- ============================================================ -->
+        <rect x="15" y="220" width="970" height="155" rx="12" ry="12"
+              fill="#f9fffb" stroke="#10b981" stroke-width="1.4" opacity="0.55" />
+        <rect x="28" y="209" width="300" height="20" rx="5" ry="5" fill="#10b981" />
+        <text x="46" y="223" style="font-size:11.5px;fill:#fff;font-weight:600;letter-spacing:0.4px;">
+          泳道 B · 切换会话读取链路（点会话卡片触发）
+        </text>
+
+        <!-- 触发起点 -->
+        <g>
+          <rect class="flow-node" x="30" y="250" width="210" height="62" />
+          <text class="flow-text" x="135" y="273">① 用户切换会话</text>
+          <text class="flow-text small" x="135" y="293">点击左侧 Dock 会话列表项</text>
+        </g>
+
+        <!-- 触发 → Step1 箭头 -->
+        <line x1="240" y1="281" x2="275" y2="281" stroke="#9ca3af" stroke-width="1.4" marker-end="url(#arrow4)" />
+
+        <!-- Step1: localStorage 快速加载 -->
+        <g>
+          <rect class="flow-node accent" x="275" y="250" width="280" height="62" />
+          <text class="flow-text" x="415" y="273">② Step 1 · localStorage 读取</text>
+          <text class="flow-text small" x="415" y="293">同步 · 0 网络延迟 · 秒开 UI</text>
+        </g>
+
+        <!-- Step1 → Step2 箭头（虚线，带"并行异步"标签） -->
+        <g>
+          <line x1="555" y1="281" x2="600" y2="281" stroke="#4d53e8" stroke-width="1.4"
+                stroke-dasharray="5,3" marker-end="url(#arrow4-accent)" />
+          <rect x="558" y="258" width="84" height="18" rx="4" ry="4"
+                fill="#eef0ff" stroke="#4d53e8" stroke-width="0.8" />
+          <text x="600" y="271" text-anchor="middle"
+                style="font-size:10px;fill:#4d53e8;font-weight:600;">并行异步</text>
+        </g>
+
+        <!-- Step2: 异步 API 覆盖 -->
+        <g>
+          <rect class="flow-node success" x="600" y="250" width="300" height="62" />
+          <text class="flow-text" x="750" y="273">③ Step 2 · getDebugData 覆盖</text>
+          <text class="flow-text small" x="750" y="293">异步 PATCH 响应 → 覆盖 Tier1+Tier2</text>
+        </g>
+
+        <!-- 泳道 B 底部：冲突策略说明（左对齐） -->
+        <g>
+          <rect x="30" y="328" width="940" height="38" rx="8" ry="8"
+                fill="#ecfdf5" stroke="#10b981" stroke-width="1" />
+          <text x="50" y="348" style="font-size:12px;fill:#065f46;font-weight:600;">
+            🎯 数据一致性策略
+          </text>
+          <text x="230" y="348" class="flow-text small" style="fill:#064e3b;">
+            Step1 先渲染减少等待 → Step2 服务端权威数据返回后，同时覆盖内存 debugEntries 和 localStorage，
+            保证后续刷新/跨设备数据一致。任何写入成功后 Tier3 为主，Tier2 仅为 Tier3 的浏览器缓存副本。
+          </text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- SSE 事件类型表 -->
+    <h3 style="margin-top: 48px;">📡 SSE 事件类型清单 (后端 → 前端)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 20%;">事件名 event:</th>
+          <th style="width: 18%;">触发时机</th>
+          <th>data 主要字段</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>token</code></td>
+          <td>LLM 每个 chunk</td>
+          <td><code>{content}</code> 单个 token 文本，前端拼接展示流式打字效果</td></tr>
+        <tr><td><code>context_loaded</code></td>
+          <td>调用 LLM 前</td>
+          <td>model, apiHost, temperature, maxTokens, contextWindow, historyMessages, systemPromptChars, <strong style="color:#4d53e8">ragContext</strong>, <strong style="color:#4d53e8">nodeKbContext</strong>, <strong style="color:#4d53e8">graphContext</strong>, ragDegraded, toolsCount, estimatedTokens, tokenPercentage</td></tr>
+        <tr><td><code>debug_request</code></td>
+          <td>请求 LLM 前</td>
+          <td><strong style="color:#4d53e8">messages[] (全量)</strong>, model, temperature, maxTokens, toolsCount, <strong style="color:#4d53e8">tools[] (完整schema)</strong>, timestamp</td></tr>
+        <tr><td><code>debug_response</code></td>
+          <td>LLM 响应完成</td>
+          <td>content, <strong style="color:#4d53e8">toolCalls[] (完整)</strong>, toolCallsCount, durationMs</td></tr>
+        <tr><td><code>debug_tool_result</code></td>
+          <td>toolResult 入库后</td>
+          <td>results[{toolCallId, rejected, result}], count — 每个工具实际执行结果</td></tr>
+        <tr><td><code>tool_call</code></td>
+          <td>assistant 请求工具时</td>
+          <td>id, action, args{}, policy — 前端据此弹窗 confirm 或 always 自动执行</td></tr>
+        <tr><td><code>token_warning</code></td>
+          <td>80% ≤ 用量 &lt; 90%</td>
+          <td>percentage, estimated, limit, message — 前端显示用量条黄色预警</td></tr>
+        <tr><td><code>error</code></td>
+          <td>捕获异常时</td>
+          <td>message — 前端 Toast 显示错误</td></tr>
+        <tr><td><code>done</code></td>
+          <td>全部处理完成</td>
+          <td><code>{}</code> 或压缩结果 — 前端关闭 streaming 状态</td></tr>
+      </tbody>
+    </table>
+
+  </section>
+
+  <!-- ================= 部署与集成 ================= -->
+  <section>
+    <div class="section-label">Part 03 · 部署集成</div>
+    <h2>初始化与配置部署</h2>
+    <p class="section-desc">
+      启动即用的 DB-first 自动建种机制，无需手动导入数据。修改配置通过管理后台在线编辑，
+      无需重启服务。
+    </p>
+
+    <div class="grid-2">
+      <div>
+        <h3>🚀 启动初始化流程</h3>
+        <ol class="steps">
+          <li>
+            <h4>Spring Boot 启动</h4>
+            <p>schema.sql 建表 (agent_ 系列 12 张)</p>
+          </li>
+          <li>
+            <h4>AgentToolRegistry @PostConstruct</h4>
+            <p>读取 classpath prompt-zh/en.md → loadFromDatabase(true)</p>
+          </li>
+          <li>
+            <h4>检测旧工具迁移</h4>
+            <p>如果存在 21 个独立旧工具名 → 全部删除</p>
+          </li>
+          <li>
+            <h4>DB 空表建种</h4>
+            <p>agent_tool_definition 插入 6 条复合工具硬编码 schema</p>
+          </li>
+          <li>
+            <h4>AgentDataSeeder 再次 ensureSeeded</h4>
+            <p>SQL 初始化后二次保障建种成功 (PostConstruct 时机可能过早)</p>
+          </li>
+          <li>
+            <h4>系统提示词 DB 覆盖</h4>
+            <p>若 agent_config 有 system_prompt.default → 覆盖 classpath 默认</p>
+          </li>
+        </ol>
+      </div>
+      <div>
+        <h3>🔧 配置层级与热更新</h3>
+        <table>
+          <thead>
+            <tr><th>配置项</th><th>层级</th><th>热更新</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>LLM 参数</td>
+              <td><span class="badge badge-blue">DB agent_config</span> → <span class="badge badge-green">application.yml</span></td>
+              <td>✅ 每次 getLlmConfig() 查 DB</td>
+            </tr>
+            <tr>
+              <td>Embedding 参数</td>
+              <td><span class="badge badge-blue">DB</span> → LLM 复用 → yml</td>
+              <td>✅ 每次 embed() 查配置</td>
+            </tr>
+            <tr>
+              <td>系统提示词</td>
+              <td><span class="badge badge-blue">DB</span> → classpath md</td>
+              <td>✅ 每次 getSystemPrompt() 读 DB</td>
+            </tr>
+            <tr>
+              <td>工具定义</td>
+              <td><span class="badge badge-blue">DB</span> → 硬编码兜底</td>
+              <td>⚠️ 需调用 refresh() 接口</td>
+            </tr>
+            <tr>
+              <td>全局权限</td>
+              <td><span class="badge badge-blue">DB global</span> → 工具默认</td>
+              <td>✅ 每次 getPolicy() 查</td>
+            </tr>
+            <tr>
+              <td>会话级权限</td>
+              <td><span class="badge badge-orange">会话 DB</span> (最高)</td>
+              <td>✅ 每次查</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4 style="margin-top: 32px;">📄 关键代码文件引用</h4>
+        <div class="card" style="padding: 18px;">
+          <p style="color:#4b5563; font-size: 13px;">
+            <strong>后端核心：</strong><br/>
+            · AgentChatService.java — 对话编排主流程<br/>
+            · AgentToolRegistry.java — 工具注册与建种<br/>
+            · AgentModelConfigService.java — 三级配置兜底<br/>
+            · EmbeddingService.java — 向量化 + 降级触发<br/>
+            · AgentDataSeeder.java — 启动建种保障
+          </p>
+          <p style="color:#4b5563; font-size: 13px; margin-top: 12px;">
+            <strong>前端核心：</strong><br/>
+            · agent/AgentContext.tsx — 全局状态与会话切换<br/>
+            · agent/AgentDockPanel.tsx — 对话面板 UI<br/>
+            · agent/DebugPanel.tsx — 调试面板<br/>
+            · agent/tools.ts — 前端工具执行器<br/>
+            · pages/admin/AgentConfigManagement.tsx — 配置中心
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer style="text-align:center; padding-top: 40px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px;">
+    Gaia Workflow Engine · AI Agent Architecture Document<br/>
+    <span style="opacity: 0.6;">基于项目代码自动生成 · 2026</span>
+  </footer>
+
+</div>
+</body>
+</html>
