@@ -36,3 +36,30 @@ export const getApiEndpoint = (endpoint: string): string => {
     return baseUrl + endpoint;
   }
 };
+
+/**
+ * 生成可直接用于 curl 的绝对 URL（含协议 + 主机 + 端口）。
+ * 当 getApiBaseUrl 返回相对路径（如 /api）时，使用当前页面的 location.origin 补全。
+ * 用于导出链接 / curl 命令等需要在浏览器外部执行的场景。
+ */
+export const getAbsoluteApiUrl = (path: string): string => {
+  const base = getApiBaseUrl();
+  if (base.startsWith('http://') || base.startsWith('https://')) {
+    // 已是绝对路径，直接拼接
+    if (base.endsWith('/') && path.startsWith('/')) {
+      return base + path.slice(1);
+    } else if (!base.endsWith('/') && !path.startsWith('/')) {
+      return `${base}/${path}`;
+    }
+    return base + path;
+  }
+  // 相对路径（如 /api），使用当前页面 origin 补全
+  const origin = typeof window !== 'undefined' && window.location
+    ? window.location.origin
+    : 'http://127.0.0.1:3000';
+  const normalizedBase = base.startsWith('/') ? base : `/${base}`;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return origin + normalizedBase + (normalizedBase.endsWith('/') && normalizedPath.startsWith('/')
+    ? normalizedPath.slice(1)
+    : normalizedPath);
+};

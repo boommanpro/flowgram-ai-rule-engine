@@ -98,7 +98,7 @@ export function useAgent(): AgentContextValue {
 }
 
 /** 后端消息 → 前端展示消息 */
-function convertMessages(msgs: AgentMessage[]): DisplayMessage[] {
+export function convertMessages(msgs: AgentMessage[]): DisplayMessage[] {
   // 先建立 tool_call_id → tool 结果 content 映射，用于回填 toolCall.result
   const toolResultMap = new Map<string, string>();
   for (const msg of msgs) {

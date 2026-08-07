@@ -178,6 +178,7 @@ export const AgentDockPanel: React.FC = () => {
     setToolExecutor,
     resolveConfirm,
     createSession,
+    renameSession,
     sendMessage,
     stopStreaming,
     debugPanelOpen,
@@ -194,6 +195,17 @@ export const AgentDockPanel: React.FC = () => {
   const [panelWidth, setPanelWidth] = useState(420);
   const [textareaHeight, setTextareaHeight] = useState(56);
   const [isResizing, setIsResizing] = useState(false);
+
+  // 顶栏标题内联编辑（双击标题触发）
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingTitleValue, setEditingTitleValue] = useState('');
+  const editTitleRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (editingTitle && editTitleRef.current) {
+      editTitleRef.current.focus();
+      editTitleRef.current.select();
+    }
+  }, [editingTitle]);
 
   // Task 1c: multimodal image input
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
@@ -350,6 +362,25 @@ export const AgentDockPanel: React.FC = () => {
   const currentSession = sessions.find((s) => s.sessionKey === currentSessionKey);
   const headerTitle = currentSession ? currentSession.title : t('agent.title');
 
+  const handleStartEditTitle = useCallback(() => {
+    if (!currentSessionKey || !headerTitle) return;
+    setEditingTitle(true);
+    setEditingTitleValue(headerTitle);
+  }, [currentSessionKey, headerTitle]);
+
+  const handleCommitTitleEdit = useCallback(async () => {
+    if (!currentSessionKey || !editingTitle) return;
+    const trimmed = editingTitleValue.trim();
+    if (trimmed && trimmed !== headerTitle) {
+      try {
+        await renameSession(currentSessionKey, trimmed);
+      } catch (e) {
+        // ignore UI already reflects optimistic rename via AgentContext
+      }
+    }
+    setEditingTitle(false);
+  }, [currentSessionKey, editingTitle, editingTitleValue, headerTitle, renameSession]);
+
   return (
     <>
       {/* 会话列表侧栏（浮于面板左侧） */}
@@ -431,19 +462,48 @@ export const AgentDockPanel: React.FC = () => {
               flexShrink: 0,
             }}
           >
-            <div
-              style={{
-                fontSize: '14px',
-                fontWeight: 600,
-                color: '#1a1a1a',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                flex: 1,
-              }}
-            >
-              {headerTitle}
-            </div>
+            {editingTitle ? (
+              <input
+                ref={editTitleRef}
+                value={editingTitleValue}
+                onChange={(e) => setEditingTitleValue(e.target.value)}
+                onBlur={() => void handleCommitTitleEdit()}
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleCommitTitleEdit();
+                  else if (e.key === 'Escape') setEditingTitle(false);
+                }}
+                style={{
+                  flex: 1,
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#1a1a1a',
+                  border: `1px solid ${ACCENT}`,
+                  borderRadius: '4px',
+                  padding: '3px 8px',
+                  outline: 'none',
+                  background: '#fff',
+                  fontFamily: 'inherit',
+                }}
+              />
+            ) : (
+              <div
+                onDoubleClick={handleStartEditTitle}
+                title={currentSession ? t('agent.doubleClickToRename') : ''}
+                style={{
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: '#1a1a1a',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  flex: 1,
+                  cursor: currentSession ? 'text' : 'default',
+                }}
+              >
+                {headerTitle}
+              </div>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <DockIconButton title={t('agent.sessionList')} onClick={() => setShowSessionList((v) => !v)}>
                 <IconList />

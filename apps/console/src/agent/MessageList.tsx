@@ -14,7 +14,7 @@ import type { DisplayMessage, ToolCallEvent } from './types';
 const ACCENT = '#4d53e8';
 
 /** Markdown 全局样式（仅注入一次） */
-const MarkdownStyle: React.FC = () => (
+export const MarkdownStyle: React.FC = () => (
   <style>{`
     .md-body { font-size: 13px; line-height: 1.6; word-break: break-word; }
     .md-body .md-p { margin: 0 0 6px; }
@@ -87,7 +87,7 @@ function policyLabel(policy: string): { text: string; color: string; bg: string 
 }
 
 /** 工具调用卡片 */
-const ToolCallCard: React.FC<{ toolCall: ToolCallEvent }> = ({ toolCall }) => {
+export const ToolCallCard: React.FC<{ toolCall: ToolCallEvent }> = ({ toolCall }) => {
   const pl = policyLabel(toolCall.policy);
   return (
     <div
@@ -133,7 +133,7 @@ const ToolCallCard: React.FC<{ toolCall: ToolCallEvent }> = ({ toolCall }) => {
 };
 
 /** 工具结果（可折叠，JSON 美化） */
-const ToolResultCard: React.FC<{ content: string }> = ({ content }) => {
+export const ToolResultCard: React.FC<{ content: string }> = ({ content }) => {
   const [expanded, setExpanded] = useState(false);
   const toggle = useCallback(() => setExpanded((v) => !v), []);
 
@@ -192,7 +192,7 @@ const ToolResultCard: React.FC<{ content: string }> = ({ content }) => {
 };
 
 /** 工具状态图标：pending/running(旋转) / done(✓) / error(✕) */
-const ToolStatusIcon: React.FC<{ toolCall: ToolCallEvent }> = ({ toolCall }) => {
+export const ToolStatusIcon: React.FC<{ toolCall: ToolCallEvent }> = ({ toolCall }) => {
   if (toolCall.result === undefined) {
     // pending / running — spinner
     return (
@@ -221,7 +221,7 @@ const ToolStatusIcon: React.FC<{ toolCall: ToolCallEvent }> = ({ toolCall }) => 
 };
 
 /** 分组工具调用卡片：将连续的 tool 消息合并为一张卡片 */
-const GroupedToolCard: React.FC<{ messages: DisplayMessage[] }> = ({ messages }) => {
+export const GroupedToolCard: React.FC<{ messages: DisplayMessage[] }> = ({ messages }) => {
   const toolCallMsgs = messages.filter((m) => m.toolCall);
   const resultMsgs = messages.filter((m) => !m.toolCall && m.content);
 
@@ -348,12 +348,21 @@ const GroupedToolCard: React.FC<{ messages: DisplayMessage[] }> = ({ messages })
 };
 
 /** 单条消息 */
-const MessageItem: React.FC<{
+export const MessageItem: React.FC<{
   message: DisplayMessage;
   streaming: boolean;
   onOptionClick: (option: string) => void;
-}> = ({ message, streaming, onOptionClick }) => {
-  const { openDebugEntry } = useAgent();
+  /** 可选：覆盖调试跳转行为（当在 AgentContext 外复用时需要传入） */
+  onDebugJump?: (debugEntryId: string) => void;
+}> = ({ message, streaming, onOptionClick, onDebugJump }) => {
+  const agent = useAgent() as { openDebugEntry?: (id: string) => void } | undefined;
+  const openDebugEntry = (id: string) => {
+    if (onDebugJump) {
+      onDebugJump(id);
+    } else if (agent?.openDebugEntry) {
+      agent.openDebugEntry(id);
+    }
+  };
   // tool 类型
   if (message.role === 'tool') {
     if (message.toolCall) {

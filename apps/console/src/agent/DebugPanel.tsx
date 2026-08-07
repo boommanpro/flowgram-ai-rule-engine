@@ -12,7 +12,7 @@ import { IconClose, IconCopy } from '@douyinfe/semi-icons';
 import { useAgent } from './AgentContext';
 import { useLanguage, t } from '../i18n';
 
-interface DebugEntry {
+export interface DebugEntry {
   id: string;
   timestamp: number;
   request?: any;
@@ -24,7 +24,7 @@ interface DebugEntry {
 const ACCENT = '#4d53e8';
 
 /** 提取调试条目的内容前缀（最后一条用户消息摘要），方便快速定位 */
-const getEntryPrefix = (entry: DebugEntry): string => {
+export const getEntryPrefix = (entry: DebugEntry): string => {
   const messages = entry.request?.messages;
   if (Array.isArray(messages)) {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -41,8 +41,65 @@ const getEntryPrefix = (entry: DebugEntry): string => {
   return entry.request?.model || entry.context?.model || '—';
 };
 
-export const DebugPanel: React.FC<{ onClose?: () => void; focusEntryId?: string | null }> = ({ onClose, focusEntryId }) => {
-  const { debugEntries, clearDebugEntries, currentSessionKey } = useAgent();
+/** 解析后端持久化的 debug_data 字符串 → DebugEntry[]
+ *  支持多种格式：JSON 数组、JSON 对象数组，或空字符串。
+ */
+export function parseDebugData(raw: string | null | undefined): DebugEntry[] {
+  if (!raw || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((e) => e && typeof e === 'object' && e.id);
+    }
+    if (parsed && Array.isArray(parsed.entries)) {
+      return parsed.entries.filter((e: any) => e && typeof e === 'object' && e.id);
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+export const DebugPanel: React.FC<{
+  onClose?: () => void;
+  focusEntryId?: string | null;
+  /** 可选：外部传入 entries —— 用于会话审查等脱离 AgentContext 的场景 */
+  entries?: DebugEntry[];
+  /** 可选：会话标签（显示在标题下方），用于外部 entries 模式 */
+  sessionKeyLabel?: string;
+  /** 可选：点击清空按钮的回调，外部 entries 模式下不传则隐藏清空按钮 */
+  onClearEntries?: () => void;
+  /** 右侧定位的偏移量（像素），当审查页面没有 AgentDock 时设置为 0 */
+  rightOffset?: number;
+}> = ({
+  onClose,
+  focusEntryId,
+  entries,
+  sessionKeyLabel,
+  onClearEntries,
+  rightOffset = 420,
+}) => {
+  // 如果外部传入 entries 就使用外部的，否则从 AgentContext 取
+  const agentCtx = useAgent() as unknown as {
+    debugEntries: DebugEntry[];
+    clearDebugEntries: () => void;
+    currentSessionKey: string | null;
+  } | null;
+  let debugEntries: DebugEntry[];
+  let clearDebugEntries: () => void;
+  let currentSessionKey: string | null;
+  if (entries !== undefined) {
+    debugEntries = entries;
+    clearDebugEntries = onClearEntries ?? (() => {});
+    currentSessionKey = sessionKeyLabel ?? null;
+  } else {
+    if (!agentCtx) throw new Error('DebugPanel: entries prop 未传时必须在 AgentProvider 内使用');
+    debugEntries = agentCtx.debugEntries;
+    clearDebugEntries = agentCtx.clearDebugEntries;
+    currentSessionKey = agentCtx.currentSessionKey;
+  }
+  const externalMode = entries !== undefined;
+
   useLanguage();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   // 当前查看原始数据的条目
@@ -68,8 +125,6 @@ export const DebugPanel: React.FC<{ onClose?: () => void; focusEntryId?: string 
     }, 60);
   }, [focusEntryId, debugEntries]);
 
-  // 调试信息持久化由 AgentContext 统一管理，避免会话切换时竞态覆盖
-
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -88,6 +143,10 @@ export const DebugPanel: React.FC<{ onClose?: () => void; focusEntryId?: string 
   };
 
   const handleClear = () => {
+    if (externalMode) {
+      onClearEntries?.();
+      return;
+    }
     if (currentSessionKey) {
       try {
         localStorage.removeItem(`agent-debug-${currentSessionKey}`);
@@ -106,7 +165,7 @@ export const DebugPanel: React.FC<{ onClose?: () => void; focusEntryId?: string 
         style={{
           position: 'fixed',
           top: 0,
-          right: '420px',
+          right: `${rightOffset}px`,
           width: '520px',
           height: '100vh',
           background: '#fff',
@@ -140,20 +199,22 @@ export const DebugPanel: React.FC<{ onClose?: () => void; focusEntryId?: string 
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              onClick={handleClear}
-              style={{
-                padding: '2px 8px',
-                fontSize: '11px',
-                border: '1px solid #e0e0e6',
-                borderRadius: '4px',
-                background: '#fff',
-                cursor: 'pointer',
-                color: '#555',
-              }}
-            >
-              {t('agent.debugClear')}
-            </button>
+            {(!externalMode || onClearEntries) && (
+              <button
+                onClick={handleClear}
+                style={{
+                  padding: '2px 8px',
+                  fontSize: '11px',
+                  border: '1px solid #e0e0e6',
+                  borderRadius: '4px',
+                  background: '#fff',
+                  cursor: 'pointer',
+                  color: '#555',
+                }}
+              >
+                {t('agent.debugClear')}
+              </button>
+            )}
             {onClose && (
               <button
                 onClick={onClose}

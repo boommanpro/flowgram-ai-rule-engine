@@ -1,7 +1,7 @@
 /**
  * Agent 后端 API 封装
  */
-import { getApiBaseUrl } from '../utils/apiConfig';
+import { getApiBaseUrl, getAbsoluteApiUrl } from '../utils/apiConfig';
 import type { AgentSession, AgentMessage, PermissionPolicy } from './types';
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -73,8 +73,9 @@ export const agentApi = {
       method: 'PUT',
       body: JSON.stringify(review),
     }),
+  // 导出链接用于浏览器外部（curl/新窗口），必须是绝对 URL（含协议+主机+端口）
   exportSessionUrl: (sessionKey: string) =>
-    `${getApiBaseUrl()}/agent/session/${sessionKey}/export?pretty=true`,
+    getAbsoluteApiUrl(`/agent/session/${sessionKey}/export?pretty=true`),
 
   // 权限管理
   getPermissions: (sessionKey: string) =>
