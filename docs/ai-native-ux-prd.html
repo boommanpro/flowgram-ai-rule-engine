@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gaia AI Agent — AI-Native 交互体验 PRD (v1.0)</title>
+<style>
+  :root {
+    --accent: #4d53e8;
+    --accent-soft: rgba(77, 83, 232, 0.08);
+    --accent-border: rgba(77, 83, 232, 0.25);
+    --bg: #fafbff;
+    --card: #ffffff;
+    --border: #e8e8ea;
+    --border-soft: #f0f0f5;
+    --text: #1a1a1a;
+    --text-2: #555555;
+    --text-3: #999999;
+    --ok: #1f9d55;
+    --warn: #b7791f;
+    --danger: #e5404e;
+    --radius: 14px;
+    --shadow: 0 6px 28px rgba(20, 24, 48, 0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+      "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 48px 40px 120px;
+  }
+
+  /* ---------- Header ---------- */
+  .page-header {
+    position: relative;
+    padding: 40px 40px 32px;
+    background: linear-gradient(135deg, #4d53e8 0%, #6d5fe8 55%, #8b7ef0 100%);
+    color: #fff;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 40px;
+    box-shadow: 0 20px 60px rgba(77, 83, 232, 0.25);
+  }
+  .page-header::after {
+    content: "";
+    position: absolute; right: -80px; top: -80px;
+    width: 360px; height: 360px;
+    background: radial-gradient(circle, rgba(255,255,255,0.18), transparent 65%);
+  }
+  .tag-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    background: rgba(255,255,255,0.18);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: #fff;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+  }
+  .page-header h1 {
+    margin: 14px 0 8px;
+    font-size: 32px;
+    letter-spacing: -0.3px;
+    line-height: 1.25;
+  }
+  .page-header .sub {
+    font-size: 15px;
+    opacity: 0.9;
+    max-width: 760px;
+    line-height: 1.7;
+  }
+  .header-meta {
+    display: flex; gap: 24px; flex-wrap: wrap;
+    margin-top: 22px;
+  }
+  .header-meta .m {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; opacity: 0.95;
+  }
+  .header-meta .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #a6ffb5;
+    box-shadow: 0 0 0 4px rgba(166, 255, 181, 0.2);
+  }
+
+  /* ---------- Section ---------- */
+  .sec {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px 36px;
+    margin-bottom: 28px;
+    box-shadow: var(--shadow);
+  }
+  .sec h2 {
+    margin: 0 0 6px;
+    font-size: 22px;
+    display: flex; align-items: center; gap: 10px;
+    letter-spacing: -0.2px;
+  }
+  .sec h2 .idx {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 8px;
+    background: var(--accent); color: #fff;
+    font-size: 14px; font-weight: 700;
+  }
+  .sec .sec-lead {
+    color: var(--text-2);
+    margin: 0 0 24px;
+    padding-left: 40px;
+    font-size: 14px;
+  }
+
+  /* ---------- Principle cards ---------- */
+  .principles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .principle {
+    padding: 20px 20px 18px;
+    border: 1px solid var(--border-soft);
+    background: linear-gradient(180deg, #fff 0%, #fafbff 100%);
+    border-radius: 12px;
+  }
+  .principle .icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px; margin-bottom: 12px;
+  }
+  .principle h4 {
+    margin: 0 0 6px; font-size: 15px; color: var(--text);
+  }
+  .principle p {
+    margin: 0; font-size: 13px; color: var(--text-2); line-height: 1.6;
+  }
+
+  /* ---------- Feature inventory (table) ---------- */
+  table.feat {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  table.feat th, table.feat td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-soft);
+    vertical-align: top;
+  }
+  table.feat th {
+    background: #f7f7fb;
+    color: var(--text-2);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.3px;
+  }
+  table.feat tr:last-child td { border-bottom: none; }
+  .chip {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    border-radius: 6px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid var(--accent-border);
+    margin-right: 4px;
+    margin-bottom: 2px;
+  }
+  .chip.canvas { background: #e7f8ef; color: #1f9d55; border-color: rgba(31,157,85,0.25); }
+  .chip.chat   { background: #fff0e6; color: #c2410c; border-color: rgba(194,65,12,0.2); }
+  .chip.admin  { background: #eef2ff; color: #4338ca; border-color: rgba(67,56,202,0.22); }
+  .chip.debug  { background: #fef3c7; color: #92400e; border-color: rgba(146,64,14,0.2); }
+
+  /* ---------- Mode selector ---------- */
+  .modes-nav {
+    display: flex;
+    gap: 8px;
+    padding: 6px;
+    background: #f3f4fa;
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    margin-bottom: 28px;
+    width: fit-content;
+  }
+  .modes-nav .tab {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-2);
+    cursor: default;
+    user-select: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .modes-nav .tab .emoji { font-size: 15px; }
+  .modes-nav .tab.active {
+    background: #fff;
+    color: var(--accent);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+    border: 1px solid var(--border-soft);
+  }
+
+  /* ---------- Mode Wireframe ---------- */
+  .wire {
+    position: relative;
+    border: 1.5px solid #d9dbe6;
+    border-radius: 14px;
+    background: #fbfbfe;
+    padding: 16px;
+    margin-bottom: 10px;
+  }
+  .wire .title {
+    position: absolute; top: -11px; left: 18px;
+    background: #fff;
+    padding: 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.4px;
+  }
+  .layout {
+    display: grid;
+    gap: 10px;
+    min-height: 420px;
+  }
+
+  .wf-header {
+    height: 48px;
+    border-radius: 8px;
+    background: linear-gradient(180deg,#fff,#f7f8fc);
+    border: 1px dashed var(--accent-border);
+    display: flex; align-items: center; padding: 0 14px;
+    font-size: 12px; color: var(--text-2); font-weight: 600;
+    gap: 16px;
+  }
+  .wf-header .pane {
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 11px;
+  }
+
+  .box {
+    border-radius: 8px;
+    border: 1.5px dashed;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 12px;
+    position: relative;
+    min-height: 56px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .box .desc {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-3);
+    margin-top: 4px;
+    line-height: 1.5;
+  }
+  .box.blue {
+    border-color: rgba(77,83,232,0.55);
+    background: rgba(77,83,232,0.05);
+    color: #3d43c6;
+  }
+  .box.green {
+    border-color: rgba(31,157,85,0.45);
+    background: rgba(31,157,85,0.05);
+    color: #147a44;
+  }
+  .box.orange {
+    border-color: rgba(194,65,12,0.45);
+    background: rgba(255,240,230,0.7);
+    color: #a13c0b;
+  }
+  .box.gray {
+    border-color: #cfd1d9;
+    background: #f5f5f9;
+    color: #6b6f7a;
+  }
+  .box.purple {
+    border-color: rgba(147, 51, 234, 0.45);
+    background: rgba(147, 51, 234, 0.05);
+    color: #7c3aed;
+  }
+
+  .split-2 {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 10px;
+  }
+  .split-3 {
+    display: grid;
+    grid-template-columns: 280px 1fr 360px;
+    gap: 10px;
+  }
+  .split-2-canvas {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 10px;
+  }
+  .split-chat-main {
+    display: grid;
+    grid-template-columns: 260px 1fr 380px;
+    gap: 10px;
+  }
+  .stack {
+    display: flex; flex-direction: column;
+    gap: 10px;
+  }
+
+  /* ---------- Interactions list ---------- */
+  .inter-list {
+    list-style: none;
+    padding: 0; margin: 20px 0 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 24px;
+  }
+  .inter-list li {
+    padding: 14px 16px;
+    background: #fafbff;
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    border-left: 3px solid var(--accent);
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .inter-list li b {
+    color: var(--text);
+  }
+  .inter-list li .kbd {
+    display: inline-block;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    color: var(--text-2);
+    margin: 0 2px;
+  }
+
+  /* ---------- States ---------- */
+  .state-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .state-card {
+    padding: 18px 18px 16px;
+    background: linear-gradient(180deg,#fff,#fafbff);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+  }
+  .state-card h5 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: var(--text);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .state-card .tag {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 7px;
+    border-radius: 5px;
+    letter-spacing: 0.3px;
+  }
+  .state-card p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-2);
+    line-height: 1.6;
+  }
+
+  /* ---------- Routing ---------- */
+  .route-row {
+    display: grid;
+    grid-template-columns: 240px 1fr 1.1fr;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-soft);
+    align-items: start;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .route-row:last-child { border-bottom: none; }
+  .route-row .path {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    color: var(--accent);
+    font-size: 12px;
+    background: var(--accent-soft);
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-weight: 600;
+    display: inline-block;
+  }
+  .route-row .note {
+    color: var(--text-2);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  /* ---------- Footnotes ---------- */
+  kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    background: #f3f4fa;
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    color: var(--text-2);
+    margin: 0 1px;
+  }
+  .checklist {
+    list-style: none;
+    padding: 0; margin: 0;
+  }
+  .checklist li {
+    padding: 6px 0;
+    font-size: 13px;
+    color: var(--text-2);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .checklist li::before {
+    content: "✓";
+    color: var(--ok);
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .foot {
+    margin-top: 40px;
+    padding: 20px 24px;
+    background: #f5f5fb;
+    border-radius: 12px;
+    font-size: 12px;
+    color: var(--text-3);
+    line-height: 1.7;
+    border: 1px dashed #cfd1d9;
+  }
+  .foot strong { color: var(--text-2); }
+  .toc {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 24px;
+    margin: 0; padding: 0;
+    list-style: none;
+  }
+  .toc li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: #fafbff;
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--text-2);
+  }
+  .toc li .n {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: var(--accent);
+    color: #fff; font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= Header ================= -->
+  <div class="page-header">
+    <span class="tag-pill">PRD v1.0 · Internal Review · 2026.08.08</span>
+    <h1>Gaia AI Agent<br/>AI-Native 交互体验重构</h1>
+    <p class="sub">
+      从「侧边栏 Copilot 辅助工具」升级为「AI-Native 三类主模式」。
+      画布为主、对话为主、Copilot 侧边栏三种体验无缝切换，所有现有<strong style="color:#ffe892">功能模块与后端接口保持不变</strong>，仅重新编排布局与交互入口。
+    </p>
+    <div class="header-meta">
+      <div class="m"><span class="dot"></span>Status: Draft for review</div>
+      <div class="m">📄 Codebase: apps/console</div>
+      <div class="m">🧩 Scope: UX 重构 · 零新增功能</div>
+      <div class="m">🎯 Target: Editor + Session Review + Admin Session</div>
+    </div>
+  </div>
+
+  <!-- ================= 0. 目录 ================= -->
+  <div class="sec">
+    <h2><span class="idx">0</span>文档目录</h2>
+    <ol class="toc">
+      <li><span class="n">1</span>设计原则 & 核心目标</li>
+      <li><span class="n">2</span>现有功能清单（不变项）</li>
+      <li><span class="n">3</span>三种模式的布局线框图</li>
+      <li><span class="n">4</span>模式切换机制（入口 / 快捷键 / 状态记忆）</li>
+      <li><span class="n">5</span>对话为主模式：画布内嵌展示细则</li>
+      <li><span class="n">6</span>关键交互与跳转（保持不变的联动）</li>
+      <li><span class="n">7</span>路由 & 状态同步</li>
+      <li><span class="n">8</span>实施路线图（优先级分层）</li>
+    </ol>
+  </div>
+
+  <!-- ================= 1. 设计原则 ================= -->
+  <div class="sec">
+    <h2><span class="idx">1</span>设计原则 & 核心目标</h2>
+    <p class="sec-lead">
+      本次重构是「用户体验的重新编排」，不新增任何功能模块。所有现有 API、工具执行器、画布引擎均保持原样。
+    </p>
+    <div class="principles">
+      <div class="principle">
+        <div class="icon">🎯</div>
+        <h4>主模式自适应</h4>
+        <p>根据用户当前场景，自动进入最贴合的模式：写工作流→画布为主；提问+生成→对话为主；边看边改→Copilot 侧栏。</p>
+      </div>
+      <div class="principle">
+        <div class="icon">🔗</div>
+        <h4>全链路可视</h4>
+        <p>任一条消息都能回溯：CreatePlan 步骤、tool call、tool result、debug entry、画布节点操作。跳转保持相同语义。</p>
+      </div>
+      <div class="principle">
+        <div class="icon">🧩</div>
+        <h4>单一事实源</h4>
+        <p>会话、消息、调试条目、节点等数据不重复维护，三模式共享同一 AgentContext + CanvasContext 数据源。</p>
+      </div>
+      <div class="principle">
+        <div class="icon">⚡️</div>
+        <h4>零思考切换</h4>
+        <p>模式切换仅改变「布局容器」，不丢失状态：输入框草稿、消息滚动位置、plan 折叠态、debug 聚焦全部保留。</p>
+      </div>
+      <div class="principle">
+        <div class="icon">🪟</div>
+        <h4>画布永不缺席</h4>
+        <p>即便是「对话为主」模式，画布也以内嵌/浮窗方式常驻，用户永远能"看到正在发生的结构"而不是纯文字想象。</p>
+      </div>
+      <div class="principle">
+        <div class="icon">💬</div>
+        <h4>ChatGPT 式对话流</h4>
+        <p>对话流式渲染、SSE token 进度、::options 快捷选项、右侧 assistant 消息 + tool call 卡片 / tool result 卡片。对话永远是视觉主角。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 2. 功能清单（不变项） ================= -->
+  <div class="sec">
+    <h2><span class="idx">2</span>现有功能模块清单（全部保留，不做任何删减）</h2>
+    <p class="sec-lead">
+      下表列出所有"必须 100% 原样保留"的模块。本 PRD 的全部工作仅在最后一列的「模式内新位置」发生结构性变更。
+    </p>
+
+    <table class="feat">
+      <thead>
+        <tr>
+          <th style="width:24%">模块 / 功能</th>
+          <th style="width:20%">归属区域</th>
+          <th>核心要点（不变）</th>
+          <th style="width:18%">类别标签</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>MessageList 消息列表</strong><br/><small>MessageItem / GroupedToolCard / ToolCallCard / ToolResultCard / MarkdownStyle</small></td>
+          <td>Agent</td>
+          <td>SSE token 流式输出、::options、user/assistant/tool 气泡、Markdown 渲染、代码高亮</td>
+          <td><span class="chip chat">对话</span><span class="chip debug">调试</span></td>
+        </tr>
+        <tr>
+          <td><strong>输入框 Composer</strong></td>
+          <td>Agent</td>
+          <td>图片上传（最多 4 张）、IME 合成处理、Enter 发送 / Shift+Enter 换行、文件粘贴、发送 / 停止 / 排队中状态</td>
+          <td><span class="chip chat">对话</span></td>
+        </tr>
+        <tr>
+          <td><strong>SessionList 会话列表</strong></td>
+          <td>Agent</td>
+          <td>新建、切换、双击重命名、删除、历史搜索</td>
+          <td><span class="chip chat">对话</span></td>
+        </tr>
+        <tr>
+          <td><strong>PlanCard 执行计划卡</strong></td>
+          <td>Agent</td>
+          <td>CreatePlan 步骤列表、步骤状态（pending/doing/done/fail）、可折叠</td>
+          <td><span class="chip chat">对话</span></td>
+        </tr>
+        <tr>
+          <td><strong>Token 进度 & 上下文压缩</strong></td>
+          <td>Agent</td>
+          <td>三色进度条、压缩上下文按钮</td>
+          <td><span class="chip chat">对话</span></td>
+        </tr>
+        <tr>
+          <td><strong>DebugPanel 调试面板</strong></td>
+          <td>Agent</td>
+          <td>独立 DebugEntry：Raw request / response / SSE event / context / Raw JSON；消息 debugEntryId 跳转定位；entries prop 模式（用于 SessionReview）</td>
+          <td><span class="chip debug">调试</span></td>
+        </tr>
+        <tr>
+          <td><strong>ConfirmModal 工具确认</strong></td>
+          <td>Agent</td>
+          <td>工具权限策略 = confirm 时的二次确认弹窗</td>
+          <td><span class="chip chat">对话</span></td>
+        </tr>
+        <tr>
+          <td><strong>Editor Canvas 画布</strong><br/><small>@flowgram.ai/free-layout-editor</small></td>
+          <td>Editor</td>
+          <td>平移缩放、节点拖拽、连线、loop/group 子画布、12 种节点类型全保留</td>
+          <td><span class="chip canvas">画布</span></td>
+        </tr>
+        <tr>
+          <td><strong>DemoTools 工具栏</strong></td>
+          <td>Editor</td>
+          <td>撤销/重做/自动布局/切换连线/适应视图/小地图/只读/批注/加节点/版本历史/变量面板/Schema 编辑器/试运行/保存</td>
+          <td><span class="chip canvas">画布</span></td>
+        </tr>
+        <tr>
+          <td><strong>EditorHeader 顶栏</strong></td>
+          <td>Editor</td>
+          <td>返回、工作流名、版本下拉（设为生效/查看历史）、保存为新版本</td>
+          <td><span class="chip canvas">画布</span></td>
+        </tr>
+        <tr>
+          <td><strong>节点面板（NodePanel）+ 属性面板（Form）+ 运行面板</strong></td>
+          <td>Editor</td>
+          <td>PanelManager 全部保留；test run panel / single-node / run-history / node-form / variable</td>
+          <td><span class="chip canvas">画布</span></td>
+        </tr>
+        <tr>
+          <td><strong>EditorCanvasBridge 画布桥</strong></td>
+          <td>Agent × Editor</td>
+          <td>CanvasContext 注入：createNodeByType / deleteNode / addLine / updateNodeData / runWorkflow / autoLayout …</td>
+          <td><span class="chip canvas">画布</span><span class="chip chat">对话</span></td>
+        </tr>
+        <tr>
+          <td><strong>AdminLayout 管理后台布局</strong></td>
+          <td>Admin</td>
+          <td>左侧导航 + 右上角语言切换 + API Base URL 设置</td>
+          <td><span class="chip admin">后台</span></td>
+        </tr>
+        <tr>
+          <td><strong>WorkflowManagement 工作流管理</strong></td>
+          <td>Admin</td>
+          <td>增删查改、从模板创建、打开编辑器</td>
+          <td><span class="chip admin">后台</span></td>
+        </tr>
+        <tr>
+          <td><strong>TemplateManagement 模板管理</strong></td>
+          <td>Admin</td>
+          <td>模板增删查改、打开模板编辑器</td>
+          <td><span class="chip admin">后台</span></td>
+        </tr>
+        <tr>
+          <td><strong>AgentConfigManagement 配置中心</strong></td>
+          <td>Admin</td>
+          <td>5 Tab：模型配置 / 提示词 & 知识库 / 工具定义 / 权限设置 / 知识图谱</td>
+          <td><span class="chip admin">后台</span></td>
+        </tr>
+        <tr>
+          <td><strong>SessionReview 会话审查</strong></td>
+          <td>Admin</td>
+          <td>左侧会话列表 + 复用 MessageList 气泡渲染 + DebugPanel(entries) 跳转 + 审查表单 + curl 导出（完整 host）</td>
+          <td><span class="chip admin">后台</span><span class="chip debug">调试</span></td>
+        </tr>
+        <tr>
+          <td><strong>首页 Home / Releases 发布日志</strong></td>
+          <td>Public</td>
+          <td>介绍页 + 时间线；2026.08.07 已新增 AI Agent GA 条目+ boommanpro.cn 跳转</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ================= 3. 三种模式布局 ================= -->
+  <div class="sec">
+    <h2><span class="idx">3</span>三种 AI-Native 主模式 — 布局线框图</h2>
+    <p class="sec-lead">
+      三模式均位于 /editor 路由内部（通过 <code>URL search param</code> + localStorage 记忆）。SessionReview 后台页面仅支持"画布为主"和"对话为主"两种（因为没有真实画布桥，用静态画布缩略视图占位）。
+    </p>
+
+    <!-- Tabs -->
+    <div class="modes-nav">
+      <div class="tab active"><span class="emoji">🎨</span>模式 A · 画布为主</div>
+      <div class="tab active"><span class="emoji">💬</span>模式 B · 对话为主</div>
+      <div class="tab active"><span class="emoji">🧭</span>模式 C · Copilot 侧栏（现状）</div>
+    </div>
+
+    <!-- ========== 模式 A：画布为主 ========== -->
+    <h3 style="margin: 6px 0 14px; color: var(--accent); display:flex; align-items:center; gap:10px;">
+      🎨 模式 A · Canvas First 画布为主
+      <span class="chip canvas" style="font-size:11px;">默认进入编辑器</span>
+      <span class="chip" style="font-size:11px;">快捷键 Ctrl + 1</span>
+    </h3>
+    <p style="margin:0 0 18px; color:var(--text-2); font-size:13px;">
+      <b>场景：</b>我在精细调整节点/连线，对话作为"副驾驶"以小抽屉形式按需呼出，画布永远是视觉主体。
+      <br/><b>尺寸：</b>画布占 ≈ 100% / Copilot 抽屉 0–420px（可拖拽调宽）/ Debug 520px 贴 Copilot 左侧
+    </p>
+
+    <div class="wire">
+      <div class="title">A · CANVAS-FIRST LAYOUT（1920 × 1080 线框示意）</div>
+      <div class="layout" style="grid-template-rows: 48px 1fr;">
+        <div class="wf-header">
+          <span>← 返回</span>
+          <div class="pane">工作流名 · 版本 v1.3 · 生效中</div>
+          <div style="flex:1"></div>
+          <div class="pane" style="background:#e7f8ef; color:#1f9d55;">A / 画布为主</div>
+          <span>B 对话</span><span>C Copilot</span>
+          <span>版本 ▾</span><span>保存为新版本</span>
+        </div>
+        <div class="split-2-canvas">
+          <!-- 左主画布 -->
+          <div class="stack" style="position: relative;">
+            <div class="box blue" style="flex:1;">
+              🎯 可视画布（CanvasRenderer）
+              <span class="desc">节点/连线/loop/group/批注 · 平移缩放 · 1:1 保留现有交互</span>
+              <div style="position: absolute; top: 64px; left: 20px;">
+                <div class="box gray" style="width:240px; min-height:0; padding:8px 12px;">
+                  DemoTools 工具栏
+                  <span class="desc">撤销 / 自动布局 / 小地图 / 只读 / 批注 / 新增节点 / 试运行 / Schema / 保存…</span>
+                </div>
+              </div>
+              <div style="position: absolute; right: 20px; top: 64px;">
+                <div class="box purple" style="width:320px; min-height:0; padding:10px 14px;">
+                  PanelManager（属性面板 / 变量面板 / 运行面板 / 节点表单 / 运行历史 / 单节点测试）
+                </div>
+              </div>
+              <div style="position:absolute; right:20px; bottom:24px;">
+                <div class="box gray" style="width:200px; min-height:0; padding:8px 12px;">
+                  Minimap 缩略图
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 右 AgentDockPanel（可折叠 → 宽度 0） -->
+          <div class="box orange">
+            💬 AgentDockPanel（宽 0 ~ 420px）
+            <span class="desc">
+              · 顶栏：会话标题双击重命名 / 会话列表 / 清空 / 关闭<br/>
+              · 消息区：MessageList（完全复用）<br/>
+              · Token 进度条 + 压缩上下文<br/>
+              · PlanCard 步骤执行卡<br/>
+              · Composer 输入框 + 图片<br/>
+              · 调试按钮打开 DebugPanel（贴本面板左侧 520px）
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 模式 B：对话为主 ========== -->
+    <h3 style="margin: 44px 0 14px; color: #c2410c; display:flex; align-items:center; gap:10px;">
+      💬 模式 B · Chat First 对话为主
+      <span class="chip chat" style="font-size:11px;">新建会话时推荐默认模式</span>
+      <span class="chip" style="font-size:11px;">快捷键 Ctrl + 2</span>
+    </h3>
+    <p style="margin:0 0 18px; color:var(--text-2); font-size:13px;">
+      <b>场景：</b>我在"告诉 AI 要做什么"，需要像 ChatGPT 一样沉浸式对话体验；
+      同时我希望"右边能看到画布正在被 AI 改什么"——画布以内嵌视图常驻对话流的右侧，点击工具消息自动 FitView 并高亮对应节点。
+      <br/><b>尺寸：</b>会话列表 260px / 对话 1fr / 画布预览 380px（可拖拽调宽 → 800 以上自动变成画布"弹出大图"模式，<kbd>&</kbd> 临时全屏）
+    </p>
+
+    <div class="wire">
+      <div class="title">B · CHAT-FIRST LAYOUT（1920 × 1080 线框示意）</div>
+      <div class="layout" style="grid-template-rows: 52px 1fr;">
+        <div class="wf-header" style="height:52px;">
+          <span style="color:var(--accent); font-weight:700;">✨ AI Agent</span>
+          <div class="pane" style="background:#fff0e6; color:#c2410c;">B / 对话为主</div>
+          <span>A 画布</span><span>C Copilot</span>
+          <div style="flex:1"></div>
+          <div class="pane">会话标题（双击重命名）· 新建 / 切换会话 ▾</div>
+          <span>Token 1,280 / 8,000 ▰▰▰▱▱ 压缩</span>
+        </div>
+        <div class="split-chat-main">
+          <!-- 左：会话列表 -->
+          <div class="box gray">
+            🧾 会话列表（SessionList）
+            <span class="desc">搜索 / 新建 / 删除 / 双击重命名 · 180→260px 加宽，显示标题、质量标记、最后更新时间</span>
+          </div>
+          <!-- 中：对话（ChatGPT 沉浸式） -->
+          <div class="stack">
+            <div class="box orange" style="flex:1;">
+              💬 对话流（MessageList）
+              <span class="desc">
+                · user / assistant / tool 气泡 · SSE token 流式 · ::options 快捷按钮<br/>
+                · assistant 消息右侧带"调试详情"锚点 → 打开 DebugPanel<br/>
+                · PlanCard 步骤卡片可折叠 · 光标跟随流式响应
+              </span>
+              <div style="margin-top: 14px;">
+                <div class="box gray" style="padding: 10px 14px; min-height: 0;">
+                  ⌨️ Composer 输入框
+                  <span class="desc">文本 + 图片（≤ 4）+ 发送/停止按钮 · Enter=发送 / Shift+Enter=换行 · 支持粘贴</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 右：内嵌画布（Canvas Preview） + 下方 Debug 折叠 -->
+          <div class="stack">
+            <div class="box blue" style="flex: 1.4;">
+              🖼️ 画布预览（Inline Canvas Renderer）
+              <span class="desc">
+                · 渲染同一份画布实例（非截图），支持平移缩放<br/>
+                · Agent 执行 canvas 工具时自动 FitView + 节点高亮脉冲<br/>
+                · 右上工具栏：🔍 FitView / ⛶ 全屏切换 / 📌 Pin / 🔗 跳转到 Canvas First 模式<br/>
+                · 支持拖拽节点粗粒度编辑（与普通画布一致）
+              </span>
+            </div>
+            <div class="box purple" style="flex: 1;">
+              🔧 调试 / Plan / 运行结果 多功能右侧面板（Tab 切换）
+              <span class="desc">
+                · <b>Debug</b>：DebugPanel 同样的 DebugEntry 列表 + 点击跳转 Raw<br/>
+                · <b>Plan</b>：PlanCard 展开视图（步骤进度、每步结果）<br/>
+                · <b>Run</b>：画布最近一次 Test Run 结果（共享 PanelManager 面板）
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 模式 C：Copilot 侧栏 ========== -->
+    <h3 style="margin: 44px 0 14px; color: #6b6f7a; display:flex; align-items:center; gap:10px;">
+      🧭 模式 C · Copilot Sidebar 侧栏模式
+      <span class="chip" style="font-size:11px; background:#f3f4fa; color:#6b6f7a; border-color:#cfd1d9;">完全等价于当前现状 v0</span>
+      <span class="chip" style="font-size:11px;">快捷键 Ctrl + 3</span>
+    </h3>
+    <p style="margin:0 0 18px; color:var(--text-2); font-size:13px;">
+      <b>场景：</b>Home / Releases / Admin 后台等非编辑器页面，或我只看文档却想偶尔召唤 AI 提问；FAB 悬停按钮全局可见。
+      <br/><b>尺寸：</b>与当前 <code>AgentDockPanel</code> 100% 一致 — 固定宽度 420px / 可调宽 / Debug 520px 贴 Copilot 左侧
+    </p>
+
+    <div class="wire">
+      <div class="title">C · COPILOT SIDEBAR LAYOUT（100% 现状，仅添加模式切换入口）</div>
+      <div class="layout" style="grid-template-rows: 1fr;">
+        <div class="split-3">
+          <!-- 左：AdminLayout/任意页面内容 -->
+          <div class="split-2" style="grid-column: 1 / span 2;">
+            <div class="box gray">
+              🌐 左侧导航
+              <span class="desc">AdminLayout / Home / Releases / Session Review / Agent Config …（内容保持不变）</span>
+            </div>
+            <div class="box blue">
+              📄 主内容区
+              <span class="desc">任意页面内容（不变）</span>
+            </div>
+          </div>
+          <!-- 右：AgentDockPanel -->
+          <div class="stack">
+            <div class="box orange" style="flex:1;">
+              💬 AgentDockPanel（420px）— 100% 现状
+              <span class="desc">
+                · 顶栏：会话标题 · 会话列表 · 关闭按钮<br/>
+                · 消息流（不变） + Token 条（不变）<br/>
+                · PlanCard（不变）<br/>
+                · Composer（不变）<br/>
+                · DebugPanel 贴 Copilot 左侧 520px
+              </span>
+            </div>
+            <div class="box purple">
+              🔧 DebugPanel（520px，贴 Copilot 左）
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- FAB -->
+      <div style="position:absolute; bottom:16px; right: 820px; color:var(--text-3); font-size:11px;">
+        + AgentDockFAB（悬浮按钮 · 全局入口 · 不变）
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 4. 模式切换 ================= -->
+  <div class="sec">
+    <h2><span class="idx">4</span>模式切换机制（入口、快捷键、持久化、过渡）</h2>
+    <p class="sec-lead">
+      切换仅改变"外壳容器"，所有内部状态完全不销毁（保证体验顺滑）。
+    </p>
+
+    <ul class="inter-list">
+      <li><b>顶栏三段式切换器</b>（A / B / C）：所有模式的顶栏左上角均渲染相同的切换 Pill，点击即时生效。</li>
+      <li><b>全局快捷键</b>：<span class="kbd">Ctrl / ⌘ + 1</span> 画布为主 · <span class="kbd">Ctrl / ⌘ + 2</span> 对话为主 · <span class="kbd">Ctrl / ⌘ + 3</span> Copilot 侧栏</li>
+      <li><b>智能入口判断</b>：
+        路由 <code>/editor</code> 无当前会话 → 默认 A（画布为主）；
+        新建会话 / 点击"AI 创建工作流" CTA → 默认 B（对话为主）；
+        非编辑器路由 + FAB 打开 → 默认 C（Copilot 侧栏）。
+      </li>
+      <li><b>URL Search Param 同步</b>：<code>?mode=canvas | chat | copilot</code>，刷新后仍保持。</li>
+      <li><b>localStorage 记忆</b>：每路由类型独立记忆。Editor 路由和 Admin 路由各存一份偏好。</li>
+      <li><b>状态保留</b>：输入框草稿、PlanCard 折叠态、消息滚动位置、debug 面板打开态与聚焦条目、canvas 视图位置——切换时不卸载组件，纯 CSS <code>display / grid-area</code> 变换。</li>
+      <li><b>过渡动画</b>：模式切换动画 = 300ms ease 尺寸 + 120ms 面板透明度过渡，避免"刷新感"。</li>
+      <li><b>非编辑器降级</b>：Home / Releases / Admin 等页面只能进入 C 模式，A / B 按钮禁用且 tooltip 提示"请打开编辑器或会话审查页使用画布为主/对话为主"。</li>
+    </ul>
+
+    <h4 style="margin:32px 0 12px; color:var(--text); font-size:15px;">📌 切换状态对照表</h4>
+    <div class="state-grid">
+      <div class="state-card">
+        <h5>🟢 A → B</h5>
+        <p>画布从主区域缩小为对话右栏内嵌预览；对话从折叠抽屉变为居中主列；会话列表从 180px 浮层 → 260px 永久左栏。</p>
+      </div>
+      <div class="state-card">
+        <h5>🟢 A → C</h5>
+        <p>Canvas 仍占满屏幕；对话主列折叠为 Copilot 420px 抽屉；内嵌画布预览关闭；FAB 行为与现状一致。</p>
+      </div>
+      <div class="state-card">
+        <h5>🟢 B → A</h5>
+        <p>内嵌画布从右栏 380px 全屏展开为主画布；对话主列折叠进 420px 抽屉；右多功能面板关闭/折叠进 DebugPanel 抽屉。</p>
+      </div>
+      <div class="state-card">
+        <h5>🟢 C → A/B</h5>
+        <p>Copilot 抽屉展开为 A 或 B；<b>非编辑器路由时会先 navigate 到 /editor 再切换</b>。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 5. 对话为主：画布内嵌 ================= -->
+  <div class="sec">
+    <h2><span class="idx">5</span>对话为主模式 · 画布内嵌展示细则（本 PRD 最关键的体验点）</h2>
+    <p class="sec-lead">
+      "在对话为主中也展示画布" = 非截图，非缩略图，而是<strong>同一份 Canvas 渲染实例</strong>，视觉缩小但操作完整。
+      这是区分"聊天机器人 / 智能工作流 Copilot"的核心体验。
+    </p>
+
+    <ul class="inter-list">
+      <li><b>数据源完全一致</b>：复用同一 <code>FreeLayoutEditorProvider</code> + <code>EditorCanvasBridge</code>，A 模式与 B 模式只改容器尺寸。不会出现"对话里的画布和真实画布不一致"。</li>
+      <li><b>节点高亮脉冲</b>：当 Agent 的 <code>createNodeByType / deleteNode / addLine</code> 等 canvas 工具被执行时，
+        对应 node id 触发 2.4s 的蓝色脉冲（box-shadow + scale），让对话流用户"看着 AI 正在对哪里动手"。</li>
+      <li><b>自动 FitView</b>：每一次 canvas 写操作（新增节点 / 连线 / 删除）之后，自动 <code>fitView(padding=60)</code>；用户主动滚动画布后 3s 内不再抢占视图。</li>
+      <li><b>画布工具栏（迷你版）</b>：右上角 4 个常驻按钮 ——
+        🔍 <b>FitView</b> · ⛶ <b>Fullscreen（临时全屏预览，Esc 退出）</b> · 📌 <b>Pin / Unpin 画布跟随开关</b> · 🔗 <b>Jump to Canvas First（一键切换到 A 模式）</b>
+      </li>
+      <li><b>尺寸调节</b>：内嵌画布与对话之间的分隔条可拖动（默认 380px，最小 280px / 最大 760px），≥ 640px 时自动渲染 PanelManager 的属性面板（提供更完整的编辑体验）。</li>
+      <li><b>Debug 联动</b>：点击 Debug 面板中的 canvas_tool_result → 内嵌画布定位到对应节点并高亮；与 A 模式跳转行为完全一致。</li>
+      <li><b>运行结果同步</b>：Test Run 结果面板在 A/B 两个模式共享同一个实例，在哪里点运行都一样。</li>
+      <li><b>只读保护</b>：<code>playground.config.readonly = false</code>（用户可以手动调整节点），与 Canvas First 完全一致，Chat 模式不是"只读观摩"。</li>
+    </ul>
+  </div>
+
+  <!-- ================= 6. 关键交互 ================= -->
+  <div class="sec">
+    <h2><span class="idx">6</span>关键交互与跳转（保持不变的联动）</h2>
+    <p class="sec-lead">
+      下表所列交互在三模式内<strong>语义完全等价</strong>，不允许因布局切换而削弱体验（要求一致的实现）。
+    </p>
+
+    <table class="feat">
+      <thead>
+        <tr>
+          <th style="width:20%">交互</th>
+          <th style="width:14%">触发源</th>
+          <th>预期行为（三模式一致）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>消息 ↔ Debug 跳转</td>
+          <td>MessageItem.assistant "调试详情"</td>
+          <td>打开 DebugPanel → 展开该 entry → 滚动定位 → 打开 Raw JSON（与现状 SessionReview / AgentDock 实现一致）</td>
+        </tr>
+        <tr>
+          <td>canvas 工具 ↔ 节点高亮</td>
+          <td>ToolResult 卡的"在画布上查看"</td>
+          <td>A 模式：画布选中+FitView；B 模式：内嵌画布选中+FitView+脉冲；C 模式：如未打开 Editor → open Editor 路由</td>
+        </tr>
+        <tr>
+          <td>会话标题编辑</td>
+          <td>双击标题（A/B/C 顶栏 + SessionList + SessionReview 详情）</td>
+          <td>Enter 保存 / Escape 取消 / 失焦保存；调用 <code>renameSession</code> API（不变）</td>
+        </tr>
+        <tr>
+          <td>curl 导出命令</td>
+          <td>SessionReview 顶部复制按钮</td>
+          <td>URL 必须包含完整 host（通过 <code>getAbsoluteApiUrl</code>），保证在终端可直接运行（不变）</td>
+        </tr>
+        <tr>
+          <td>工具二次确认</td>
+          <td>PermissionPolicy = confirm</td>
+          <td>ConfirmModal 形态不变；A 模式和 B 模式的 modal 需要 z-index 高于画布里的 popover</td>
+        </tr>
+        <tr>
+          <td>Token 进度超限</td>
+          <td>TokenUsage.limit 到达</td>
+          <td>红色进度条 + 闪烁"压缩上下文"按钮（与现状一致）</td>
+        </tr>
+        <tr>
+          <td>Plan 步骤点击</td>
+          <td>PlanCard 任一 step</td>
+          <td>跳转到对应 tool call 消息（如已生成），或滚动到对应 assistant 气泡锚点</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ================= 7. 路由 & 状态 ================= -->
+  <div class="sec">
+    <h2><span class="idx">7</span>路由 & 全局状态同步</h2>
+    <p class="sec-lead">
+      所有数据仍来自 <code>AgentContext（AgentProvider 包裹整树）</code> + <code>FreeLayoutEditorProvider</code>。新增 <code>mode</code> 与 <code>debugPanel</code> 两个 UI 状态。
+    </p>
+
+    <div class="route-row">
+      <div><span class="path">/editor</span><span class="path">/editor/:code</span></div>
+      <div>
+        <b>Editor 路由（唯一支持三模式的路由）</b><br/>
+        URL 示例：<code>/editor/wf_01?mode=chat</code>
+      </div>
+      <div class="note">
+        首次进入无 mode 参数 → 按"是否有 currentSession"判定：有 → 读取 localStorage；无 → 默认 canvas。
+        Editor 组件内部新增 <code>ModeAwareEditorShell</code>，根据 mode 渲染三种布局结构。
+      </div>
+    </div>
+    <div class="route-row">
+      <div><span class="path">/admin/sessions</span></div>
+      <div><b>SessionReview（支持 A + B 模式，不支持 C 因为 Copilot 已经存在）</b><br/>URL：<code>/admin/sessions?mode=chat</code></div>
+      <div class="note">
+        SessionReview 的"画布"改为独立视图（无 CanvasBridge 注入），使用 MessageList 已存在的布局；
+        新增"画布快照"占位（若要真实画布预览可以跳转 /editor/:code?mode=chat 并带上当前会话 key）。
+      </div>
+    </div>
+    <div class="route-row">
+      <div><span class="path">/admin/**</span><span class="path">/releases</span><span class="path">/</span></div>
+      <div><b>非编辑器路由（只允许 C 模式）</b></div>
+      <div class="note">
+        A / B 按钮禁用 + Tooltip："请打开编辑器或会话审查页面使用画布为主 / 对话为主模式"。
+        点击时如果是后台管理且目标是会话，可导航到 <code>/admin/sessions?mode=chat</code>。
+      </div>
+    </div>
+    <div class="route-row">
+      <div><span class="path">AgentContext 新增</span></div>
+      <div>
+        <ul class="checklist">
+          <li><code>mode: 'canvas' | 'chat' | 'copilot'</code>（带 setter + URL 同步 + localStorage 同步）</li>
+          <li><code>debugPanelRightOffset</code>（根据当前 mode 给出 DebugPanel 定位参数）</li>
+          <li>不新增任何数据流（消息/会话/debug entries/plan 保持原样）</li>
+        </ul>
+      </div>
+      <div class="note">
+        <b>不变项</b>：convertMessages、getAbsoluteApiUrl、renameSession、agentApi、parseDebugData、useEditorProps 全部保持不变，<b>零业务代码变动</b>。
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 8. 实施路线图 ================= -->
+  <div class="sec">
+    <h2><span class="idx">8</span>实施路线图（按优先级分层交付 · 不做"一步到位"）</h2>
+    <p class="sec-lead">
+      建议分 3 个里程碑推进。每一层完成后都要回归：所有现有功能（第 2 节）必须 100% 通过。
+    </p>
+
+    <div class="state-grid" style="grid-template-columns: repeat(3, 1fr); gap:18px;">
+      <div class="state-card" style="border-top: 3px solid var(--accent);">
+        <h5>🟢 P0 · Shell 层重构<span class="tag">v2.1</span></h5>
+        <p>
+          ① 新增 ModeAwareShell（根据 mode 渲染三模式布局容器）<br/>
+          ② 顶栏切换器 + <kbd>Ctrl/⌘+1/2/3</kbd> + mode 存 URL & localStorage<br/>
+          ③ A 模式 = 当前 Editor 布局（零功能回归风险）<br/>
+          ④ C 模式 = 当前 AgentDock（零回归风险）<br/>
+          ⑤ B 模式骨架：会话列表 + 对话 +（空画布占位 + 占位"画布预览"文案）
+        </p>
+      </div>
+      <div class="state-card" style="border-top: 3px solid var(--ok);">
+        <h5>🟡 P1 · 对话为主内嵌画布<span class="tag">v2.2</span></h5>
+        <p>
+          ① B 模式：共享同一份 <code>FreeLayoutEditorProvider</code> 渲染<br/>
+          ② 画布工具迷你版（FitView / Fullscreen / Pin / JumpToA）<br/>
+          ③ Agent 工具操作 → 节点高亮脉冲 & 自动 FitView<br/>
+          ④ B 模式可拖拽调节画布宽度阈值 → ≥640 显示属性面板
+        </p>
+      </div>
+      <div class="state-card" style="border-top: 3px solid var(--warn);">
+        <h5>🟠 P2 · 细节打磨<span class="tag">v2.3</span></h5>
+        <p>
+          ① SessionReview 接入 A / B 模式切换<br/>
+          ② 过渡动画 & 滚动位置保持<br/>
+          ③ 尺寸断点响应式（≤ 1280px 默认隐藏画布内嵌，提供临时全屏按钮）<br/>
+          ④ 模式切换时 Focus 管理（输入框、画布焦点）<br/>
+          ⑤ 回归验证：Agent 全部用例 + 后台页面 100%
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <strong>文档说明：</strong>本 PRD 仅定义「信息架构 + 布局 + 交互流程」。
+    所有引用的组件实现细节参考代码位置：
+    <a href="file:///Users/boommanpro/trae_project/flowgram-ai-rule-engine/apps/console/src/agent/AgentDockPanel.tsx" style="color:var(--accent);">AgentDockPanel.tsx</a> ·
+    <a href="file:///Users/boommanpro/trae_project/flowgram-ai-rule-engine/apps/console/src/agent/MessageList.tsx" style="color:var(--accent);">MessageList.tsx</a> ·
+    <a href="file:///Users/boommanpro/trae_project/flowgram-ai-rule-engine/apps/console/src/agent/DebugPanel.tsx" style="color:var(--accent);">DebugPanel.tsx</a> ·
+    <a href="file:///Users/boommanpro/trae_project/flowgram-ai-rule-engine/apps/console/src/editor.tsx" style="color:var(--accent);">editor.tsx</a> ·
+    <a href="file:///Users/boommanpro/trae_project/flowgram-ai-rule-engine/apps/console/src/pages/admin/SessionReview.tsx" style="color:var(--accent);">SessionReview.tsx</a> ·
+    <a href="file:///Users/boommanpro/trae_project/flowgram-ai-rule-engine/apps/console/src/agent/EditorCanvasBridge.tsx" style="color:var(--accent);">EditorCanvasBridge.tsx</a> ·
+    <a href="file:///Users/boommanpro/trae_project/flowgram-ai-rule-engine/apps/console/src/components/tools/index.tsx" style="color:var(--accent);">DemoTools.tsx</a> ·
+    <a href="file:///Users/boommanpro/trae_project/flowgram-ai-rule-engine/apps/console/src/hooks/use-editor-props.tsx" style="color:var(--accent);">use-editor-props.tsx</a>。
+    <br/>
+    <strong>功能冻结承诺：</strong>第 2 节列出的 19 个模块，<strong style="color:var(--danger);">任何实现方案都不得删除 / 弱化其现有行为</strong>。重构仅限"组件被摆在哪、用户从哪进"。
+  </div>
+</div>
+</body>
+</html>
