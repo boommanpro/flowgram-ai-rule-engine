@@ -18,6 +18,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.reflect.Array;
 import java.util.*;
 
 /**
@@ -75,8 +76,9 @@ public class LoopNode extends Chain {
             outputResults.put(outputKey, new ArrayList<>());
         }
 
-        // 执行循环
-        for (int i = 0; i < loopList.size(); i++) {
+        // 执行循环（受 maxLoopCount 约束，0 表示不限制）
+        int maxCount = maxLoopCount > 0 ? Math.min(loopList.size(), maxLoopCount) : loopList.size();
+        for (int i = 0; i < maxCount; i++) {
             currentLoopIndex = i;
             currentLoopItem = loopList.get(i);
             loopBreak = false;
@@ -241,8 +243,17 @@ public class LoopNode extends Chain {
 
         // 如果是数组，转换为列表
         if (data.getClass().isArray()) {
-            Object[] array = (Object[]) data;
-            return Arrays.asList(array);
+            // 基本类型数组（int[]/long[]/char[] 等）强转 Object[] 会抛 ClassCastException，
+            // 这里统一通过反射逐元素读取，兼容对象数组与基本类型数组。
+            if (data instanceof Object[]) {
+                return Arrays.asList((Object[]) data);
+            }
+            int length = Array.getLength(data);
+            List<Object> arrayList = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                arrayList.add(Array.get(data, i));
+            }
+            return arrayList;
         }
 
         // 如果是字符串且看起来像JSON数组

@@ -45,26 +45,44 @@ public class HttpNode extends BaseNode {
     public Map<String, Object> execute(Chain chain) {
         Map<String, Object> result = new HashMap<>();
 
-        try {
-            // 构建HTTP请求
-            HttpRequest request = buildHttpRequest(chain);
+        // 空配置兜底：缺失 api 或 url 时不应抛 NPE，应优雅降级到 error
+        if (api == null || api.getUrl() == null || StrUtil.isBlank(api.getMethod())) {
+            log.warn("HTTP节点缺少有效的 api/url/method 配置，id={}", this.getId());
+            result.put("error", "HTTP节点缺少有效的 api 配置（url/method 未设置）");
+            return result;
+        }
 
-            // 设置超时
-            if (timeout != null) {
-                request.timeout(timeout.getTimeout());
+        // 重试次数：timeout.retryTimes > 0 时生效，否则默认 1 次（无重试）
+        int retryTimes = timeout != null && timeout.getRetryTimes() > 0 ? timeout.getRetryTimes() : 1;
+
+        for (int attempt = 1; attempt <= retryTimes; attempt++) {
+            try {
+                // 构建HTTP请求
+                HttpRequest request = buildHttpRequest(chain);
+
+                // 设置超时
+                if (timeout != null) {
+                    request.timeout(timeout.getTimeout());
+                }
+
+                // 发起请求
+                HttpResponse response = request.execute();
+
+                // 构建结果
+                result.put("body", response.body());
+                result.put("headers", response.headers());
+                result.put("statusCode", response.getStatus());
+
+                // 请求成功，无需继续重试
+                return result;
+
+            } catch (Exception e) {
+                log.warn("HTTP请求执行失败(第{}/{}次): {}", attempt, retryTimes, e.getMessage());
+                if (attempt >= retryTimes) {
+                    log.error("HTTP请求重试{}次后仍失败", retryTimes, e);
+                    result.put("error", e.getMessage());
+                }
             }
-
-            // 发起请求
-            HttpResponse response = request.execute();
-
-            // 构建结果
-            result.put("body", response.body());
-            result.put("headers", response.headers());
-            result.put("statusCode", response.getStatus());
-
-        } catch (Exception e) {
-            log.error("HTTP请求执行失败", e);
-            result.put("error", e.getMessage());
         }
 
         return result;
@@ -117,6 +135,9 @@ public class HttpNode extends BaseNode {
             if ("template".equals(type) && content instanceof String) {
                 // 使用简单模板解析
                 return parseTemplate((String) content, chain.getMemory());
+            } else if (content != null) {
+                // constant 等类型：直接取字面量 URL，避免 URL 变空导致请求失败
+                return content.toString();
             }
         } else if (urlValue instanceof String) {
             return (String) urlValue;

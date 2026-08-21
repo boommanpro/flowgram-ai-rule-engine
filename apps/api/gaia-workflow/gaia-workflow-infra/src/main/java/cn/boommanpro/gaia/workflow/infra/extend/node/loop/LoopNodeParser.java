@@ -25,6 +25,7 @@ public class LoopNodeParser extends BaseNodeParser<LoopNode> {
     private static final String LOOP_FOR_PATH = "$.data.loopFor";
     private static final String LOOP_OUTPUTS_PATH = "$.data.loopOutputs";
     private static final String OUTPUTS_PATH = "$.data.outputs";
+    private static final String MAX_LOOP_COUNT_PATH = "$.data.maxLoopCount";
     private static final String BLOCKS_PATH = "$.blocks";
     private static final String EDGES_PATH = "$.edges";
 
@@ -49,6 +50,12 @@ public class LoopNodeParser extends BaseNodeParser<LoopNode> {
                 loopOutputs.put(key, loopOutput);
             }
             loopNode.setLoopOutputs(loopOutputs);
+        }
+
+        // 解析迭代上限（0 表示不限制）
+        Object maxLoopCountValue = nodeJSONObject.getByPath(MAX_LOOP_COUNT_PATH);
+        if (maxLoopCountValue != null) {
+            loopNode.setMaxLoopCount(Integer.parseInt(maxLoopCountValue.toString()));
         }
 
         // 解析输出定义
